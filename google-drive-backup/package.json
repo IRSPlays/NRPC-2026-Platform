@@ -1,0 +1,13 @@
+{
+  "name": "nrpc-backup-google-drive",
+  "version": "1.0.0",
+  "description": "Automated backup to Google Drive",
+  "main": "backup.js",
+  "type": "module",
+  "scripts": {
+    "backup": "node backup.js"
+  },
+  "dependencies": {
+    "googleapis": "^131.0.0"
+  }
+}
