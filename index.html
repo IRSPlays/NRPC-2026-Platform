@@ -2,13 +2,38 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NRPC Competition Platform</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  </head>
+    
+    <!-- SEO Meta Tags -->
+    <title>NRPC Competition Platform | Robotics Score Calculator & Poster Submission</title>
+    <meta name="description" content="NRPC (National Robotics Programming Competition) De-extinction Challenge 2026. Calculate robot mission scores, submit research posters, and view live rankings. Free platform for schools." />
+    <meta name="keywords" content="NRPC, robotics competition, de-extinction, robot scores, research poster, STEM education, school competition" />
+    <meta name="author" content="NRPC Competition" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="en" />
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="NRPC Competition Platform" />
+    <meta property="og:description" content="Robotics competition platform for the NRPC De-extinction Challenge 2026. Calculate scores, submit posters, view rankings." />
+    <meta property="og:image" content="/og-image.png" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="NRPC Competition Platform" />
+    <meta name="twitter:description" content="Robotics competition platform for the NRPC De-extinction Challenge 2026." />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
+    <!-- Dynamic URL for SEO (set by JS) -->
+    <script>
+      const baseUrl = window.location.origin;
+      document.write('<link rel="canonical" href="' + baseUrl + '/" />');
+      document.write('<meta property="og:url" content="' + baseUrl + '/" />');
+    </script>
+    
+    <!-- Fonts -->
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

@@ -226,17 +226,26 @@ To expose your local server to the internet using Playit.gg:
 3. Run Playit.gg agent in another terminal
 4. Share the generated URL with participants
 
-## Deploy
+## Cloud Backup (Recommended)
+
+Prevent data loss with automated Google Drive backups.
+
+### Setup
 
 ```bash
-# Development (frontend + backend)
-npm run dev
-
-# Production (build + serve)
-npm run build && npm start
+cd google-drive-backup
+npm install
+node quick-upload.js
 ```
 
-Supports deployment via Playit.gg or any cloud platform.
+First run requires OAuth authorization (one-time). Creates `credentials.json` + `token.json`.
+
+### Automated Backups
+
+- **Windows**: Use Task Scheduler to run `quick-upload.js` every 4 hours
+- **Manual**: `node quick-upload.js` (latest) or `node quick-upload.js --all` (all backups)
+
+See `google-drive-backup/README.md` for full setup instructions.
 
 ## License
 

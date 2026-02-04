@@ -561,6 +561,59 @@ app.post('/api/backup/restore', requireAdmin, async (req, res) => {
   }
 });
 
+// Serve sitemap.xml and robots.txt from public folder
+app.use(express.static(path.join(__dirname, '../public')));
+
+// API endpoints serve sitemap.xml with actual domain
+app.get('/sitemap.xml', (req, res) => {
+  const baseUrl = process.env.BASE_URL || `https://${req.get('host')}`;
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}/</loc>
+    <lastmod>2026-02-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/calculator</loc>
+    <lastmod>2026-02-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/team-login</loc>
+    <lastmod>2026-02-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+</urlset>`;
+  
+  res.set('Content-Type', 'application/xml');
+  res.send(sitemap);
+});
+
+// Dynamic robots.txt
+app.get('/robots.txt', (req, res) => {
+  const baseUrl = process.env.BASE_URL || `https://${req.get('host')}`;
+  const robots = `# Robots.txt for NRPC Competition Platform
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: ${baseUrl}/sitemap.xml
+
+# Disallow admin pages
+Disallow: /admin
+Disallow: /team-dashboard
+Disallow: /submit
+Disallow: /api/
+`;
+  
+  res.set('Content-Type', 'text/plain');
+  res.send(robots);
+});
+
 // Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);

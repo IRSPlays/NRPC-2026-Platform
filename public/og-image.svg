@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0D7377"/>
+      <stop offset="100%" style="stop-color:#14FFEC"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  
+  <!-- Trophy Icon -->
+  <g transform="translate(540, 215)">
+    <path d="M60 0 C60 -20, 90 -20, 90 0 L90 40 L120 40 L120 60 L60 60 L60 40 L30 40 L30 60 L-30 60 L-30 40 L-60 40 L-60 0 C-60 -20, -30 -20, -30 0 L-30 80 C-30 100, -60 100, -60 120 L60 120 C60 100, 30 100, 30 80 Z" fill="#ffffff" opacity="0.95"/>
+    <ellipse cx="0" cy="-10" rx="45" ry="15" fill="#ffffff" opacity="0.9"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="600" y="400" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#ffffff" text-anchor="middle">NRPC 2026</text>
+  <text x="600" y="450" font-family="Arial, sans-serif" font-size="28" fill="#ffffff" text-anchor="middle" opacity="0.9">De-extinction Challenge</text>
+  <text x="600" y="510" font-family="Arial, sans-serif" font-size="22" fill="#ffffff" text-anchor="middle" opacity="0.8">Robotics Competition Platform</text>
+</svg>
