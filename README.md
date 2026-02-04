@@ -250,3 +250,9 @@ See `google-drive-backup/README.md` for full setup instructions.
 ## License
 
 MIT License - Free for educational use
+
+---
+
+**GitHub:** https://github.com/IRSPlays/NRPC-2026-Platform
+
+**Live URL:** https://nrpc-platform.app
