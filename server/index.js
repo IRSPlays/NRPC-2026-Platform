@@ -4,6 +4,8 @@ import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import { getDb, backupDatabase, restoreDatabase } from './database.js';
 import { calculateTotalScore, calculateRankings, calculateChampionshipRankings } from './scoring.js';
@@ -13,6 +15,25 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const isProd = process.env.NODE_ENV === 'production';
+
+// Security Middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for easier development, enable in full production
+}));
+
+// Rate Limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 500, // Limit each IP to 500 requests per window
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // Limit each IP to 20 login attempts per 15 minutes
+  message: { error: 'Too many login attempts, please try again after 15 minutes' }
+});
 
 // Middleware
 app.use(cors({
@@ -21,6 +42,8 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
+app.use('/api/', generalLimiter);
+
 // Serve uploaded files with proper MIME types
 app.use('/uploads', (req, res, next) => {
   const ext = path.extname(req.path).toLowerCase();
@@ -105,15 +128,18 @@ const upload = multer({
 
 // ===== AUTH ROUTES =====
 
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  maxAge: 8 * 60 * 60 * 1000, // 8 hours
+  secure: isProd,
+  sameSite: 'strict'
+};
+
 // Admin login
-app.post('/api/auth/admin', (req, res) => {
+app.post('/api/auth/admin', authLimiter, (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASSWORD) {
-    res.cookie('admin_auth', ADMIN_PASSWORD, { 
-      httpOnly: true, 
-      maxAge: 8 * 60 * 60 * 1000, // 8 hours
-      secure: false // Set to true in production with HTTPS
-    });
+    res.cookie('admin_auth', ADMIN_PASSWORD, COOKIE_OPTIONS);
     res.json({ success: true });
   } else {
     res.status(401).json({ error: 'Invalid password' });
@@ -121,14 +147,10 @@ app.post('/api/auth/admin', (req, res) => {
 });
 
 // Judge login
-app.post('/api/auth/judge', (req, res) => {
+app.post('/api/auth/judge', authLimiter, (req, res) => {
   const { password } = req.body;
   if (password === JUDGE_PASSWORD) {
-    res.cookie('judge_auth', JUDGE_PASSWORD, {
-      httpOnly: true,
-      maxAge: 8 * 60 * 60 * 1000,
-      secure: false
-    });
+    res.cookie('judge_auth', JUDGE_PASSWORD, COOKIE_OPTIONS);
     res.json({ success: true });
   } else {
     res.status(401).json({ error: 'Invalid password' });
@@ -136,7 +158,7 @@ app.post('/api/auth/judge', (req, res) => {
 });
 
 // Team login
-app.post('/api/auth/team', async (req, res) => {
+app.post('/api/auth/team', authLimiter, async (req, res) => {
   const { teamId, password } = req.body;
   
   if (password !== TEAM_PASSWORD) {
@@ -149,11 +171,7 @@ app.post('/api/auth/team', async (req, res) => {
     return res.status(404).json({ error: 'Team not found' });
   }
   
-  res.cookie('team_id', teamId, {
-    httpOnly: true,
-    maxAge: 8 * 60 * 60 * 1000,
-    secure: false
-  });
+  res.cookie('team_id', teamId, COOKIE_OPTIONS);
   
   res.json({ 
     success: true, 
