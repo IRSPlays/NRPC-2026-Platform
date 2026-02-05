@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface CountdownTimerProps {
   targetDate: string;
@@ -11,36 +12,35 @@ interface TimeLeft {
   seconds: number;
 }
 
-const RollingDigit = ({ value }: { value: number }) => {
-  const digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-  
-  return (
-    <div className="relative h-[1.2em] overflow-hidden leading-none">
-      <div 
-        className="flex flex-col transition-transform duration-700 ease-[cubic-bezier(0.45,0.05,0.55,0.95)]"
-        style={{ transform: `translateY(-${value * 10}%)` }}
+const Digit = ({ value }: { value: string }) => (
+  <div className="relative h-[1em] w-[0.6em] overflow-hidden inline-block">
+    <AnimatePresence mode="popLayout">
+      <motion.span
+        key={value}
+        initial={{ y: "100%" }}
+        animate={{ y: "0%" }}
+        exit={{ y: "-100%" }}
+        transition={{ duration: 0.5, ease: "backOut" }}
+        className="absolute inset-0 flex items-center justify-center leading-none"
       >
-        {digits.map((digit) => (
-          <div key={digit} className="h-[1.2em] flex items-center justify-center">
-            {digit}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
+        {value}
+      </motion.span>
+    </AnimatePresence>
+  </div>
+);
 
-const TimeSection = ({ value, label, colorClass }: { value: number, label: string, colorClass: string }) => {
-  const tens = Math.floor(value / 10);
-  const ones = value % 10;
+const TimeSection = ({ value, label, colorClass, digitsCount = 2 }: { value: number, label: string, colorClass: string, digitsCount?: number }) => {
+  const valString = value.toString().padStart(digitsCount, '0');
+  const digits = valString.split('');
 
   return (
     <div className="flex flex-col items-center">
-      <div className={`flex text-6xl md:text-8xl font-black font-heading tracking-tighter ${colorClass}`}>
-        <RollingDigit value={tens} />
-        <RollingDigit value={ones} />
+      <div className={`flex font-heading font-black tracking-tighter text-4xl sm:text-6xl md:text-8xl lg:text-9xl ${colorClass} h-[1em] overflow-hidden`}>
+        {digits.map((d, i) => (
+          <Digit key={i} value={d} />
+        ))}
       </div>
-      <span className="text-[10px] font-mono uppercase tracking-[0.4em] text-neo-slate/30 mt-2">
+      <span className="text-[10px] sm:text-xs md:text-sm font-mono uppercase tracking-[0.2em] text-neo-slate/40 mt-2 md:mt-4">
         {label}
       </span>
     </div>
@@ -48,12 +48,7 @@ const TimeSection = ({ value, label, colorClass }: { value: number, label: strin
 };
 
 export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
-  const [timeLeft, setTimeLeft] = useState<TimeLeft>({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  });
+  const [timeLeft, setTimeLeft] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
@@ -86,7 +81,7 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
     return (
       <div className="text-center py-8">
         <div className="inline-flex items-center gap-3 px-8 py-4 bg-neo-cyan/10 rounded-2xl border border-neo-cyan/20">
-          <span className="text-2xl font-heading font-black text-neo-cyan uppercase tracking-widest neo-text-glow">
+          <span className="text-lg sm:text-2xl font-heading font-black text-neo-cyan uppercase tracking-widest neo-text-glow">
             Mission Commenced
           </span>
         </div>
@@ -95,14 +90,14 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
   }
 
   return (
-    <div className="w-full">
-      <div className="flex justify-center items-baseline gap-4 md:gap-12">
-        <TimeSection value={timeLeft.days} label="Days" colorClass="text-white" />
-        <div className="text-4xl font-black text-white/10 self-center -mt-6">:</div>
+    <div className="w-full flex justify-center items-center select-none">
+      <div className="flex items-start gap-2 sm:gap-6 md:gap-12">
+        <TimeSection value={timeLeft.days} label="Days" colorClass="text-white" digitsCount={3} />
+        <div className="text-2xl sm:text-4xl md:text-6xl font-black text-white/10 pt-2 sm:pt-4">:</div>
         <TimeSection value={timeLeft.hours} label="Hours" colorClass="text-white" />
-        <div className="text-4xl font-black text-white/10 self-center -mt-6">:</div>
+        <div className="text-2xl sm:text-4xl md:text-6xl font-black text-white/10 pt-2 sm:pt-4">:</div>
         <TimeSection value={timeLeft.minutes} label="Mins" colorClass="text-neo-cyan neo-text-glow" />
-        <div className="text-4xl font-black text-white/10 self-center -mt-6">:</div>
+        <div className="text-2xl sm:text-4xl md:text-6xl font-black text-white/10 pt-2 sm:pt-4">:</div>
         <TimeSection value={timeLeft.seconds} label="Secs" colorClass="text-neo-amber" />
       </div>
     </div>

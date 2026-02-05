@@ -98,7 +98,7 @@ export default function TeamDashboard() {
       </section>
 
       {/* Metrics Grid */}
-      <section className="grid md:grid-cols-4 gap-6">
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         {[
           { label: 'Total Missions', val: scores.length, icon: Radio, color: 'text-neo-cyan' },
           { label: 'Highest Score', val: getBestScore(), icon: Target, color: 'text-neo-amber', sub: '/ 155 PTS' },

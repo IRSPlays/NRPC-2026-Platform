@@ -96,7 +96,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Stats */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {[
           { label: 'Total Teams', val: stats.teams, icon: Users, color: 'text-neo-cyan' },
           { label: 'Submissions', val: stats.submissions, icon: FileText, color: 'text-neo-slate' },

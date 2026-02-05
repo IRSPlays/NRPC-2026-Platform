@@ -16,6 +16,13 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
 }) => {
   const [displayScore, setDisplayScore] = useState(totalScore);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (displayScore !== totalScore) {
@@ -33,49 +40,39 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div className="neo-glass rounded-[2rem] p-8 border-neo-cyan/10 sticky top-24 overflow-hidden">
+    <div className="neo-glass rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-8 border-neo-cyan/10 lg:sticky top-24 overflow-hidden">
       {/* Decorative Scanner Line */}
       <div className="scanning-line absolute w-full top-0 left-0 opacity-10"></div>
 
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-xs font-mono font-bold text-neo-cyan uppercase tracking-[0.3em] flex items-center gap-2">
-          <Activity className="w-4 h-4 animate-pulse" />
-          Core Sync Status
+      <div className="flex items-center justify-between mb-4 md:mb-8">
+        <h2 className="text-[10px] font-mono font-bold text-neo-cyan uppercase tracking-[0.2em] md:tracking-[0.3em] flex items-center gap-2">
+          <Activity className="w-3 h-3 md:w-4 md:h-4 animate-pulse" />
+          Sync Status
         </h2>
-        <div className="px-2 py-0.5 rounded border border-neo-cyan/30 text-[10px] font-mono text-neo-cyan/60 animate-pulse">
+        <div className="px-2 py-0.5 rounded border border-neo-cyan/30 text-[8px] md:text-[10px] font-mono text-neo-cyan/60 animate-pulse">
           LIVE
         </div>
       </div>
 
       {/* Circular Gauge - Technical Re-skin */}
-      <div className="relative flex items-center justify-center mb-10">
-        <svg className="w-56 h-56 transform -rotate-90">
+      <div className="relative flex items-center justify-center mb-6 md:mb-10">
+        <svg className="w-40 h-40 md:w-56 md:h-56 transform -rotate-90">
           <circle
-            cx="112"
-            cy="112"
-            r="80"
+            cx={isMobile ? 80 : 112}
+            cy={isMobile ? 80 : 112}
+            r={isMobile ? 60 : 80}
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
             className="text-white/5"
           />
           <circle
-            cx="112"
-            cy="112"
-            r="90"
+            cx={isMobile ? 80 : 112}
+            cy={isMobile ? 80 : 112}
+            r={isMobile ? 60 : 80}
             fill="none"
             stroke="currentColor"
-            strokeWidth="1"
-            strokeDasharray="4 8"
-            className="text-white/10"
-          />
-          <circle
-            cx="112"
-            cy="112"
-            r="80"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="8"
+            strokeWidth="6 md:strokeWidth-8"
             strokeLinecap="round"
             className={`text-neo-cyan transition-all duration-700 ease-out ${isAnimating ? 'opacity-50' : ''}`}
             strokeDasharray={circumference}
@@ -87,11 +84,11 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
         </svg>
         
         <div className="absolute text-center">
-          <div className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest mb-1">Combined Yield</div>
-          <div className={`text-6xl font-black font-heading text-white tracking-tighter transition-all duration-300 ${isAnimating ? 'scale-110 text-neo-cyan neo-text-glow' : ''}`}>
+          <div className="text-[8px] md:text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest mb-1">Yield</div>
+          <div className={`text-4xl md:text-6xl font-black font-heading text-white tracking-tighter transition-all duration-300 ${isAnimating ? 'scale-110 text-neo-cyan neo-text-glow' : ''}`}>
             {displayScore}
           </div>
-          <div className="text-xs font-mono text-neo-cyan/60 mt-1">
+          <div className="text-[8px] md:text-xs font-mono text-neo-cyan/60 mt-1">
             / {maxScore} PTS
           </div>
         </div>
