@@ -46,16 +46,24 @@ export default function Home() {
         </div>
 
         {/* Hosted By Section */}
-        <div className="pt-12 flex flex-col items-center gap-8">
-          <p className="text-[10px] font-mono text-neo-slate/30 uppercase tracking-[0.5em]">Tournament Hosting Partners</p>
-          <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20 opacity-60 hover:opacity-100 transition-opacity duration-500">
-            <div className="flex flex-col items-center gap-3 group">
-              <img src="/ADSS Logo.png" alt="Admiralty Secondary School" className="h-16 md:h-20 w-auto grayscale group-hover:grayscale-0 transition-all duration-500" />
-              <span className="text-[8px] font-mono text-neo-slate/40 group-hover:text-neo-cyan transition-colors uppercase tracking-widest text-center">Admiralty Secondary School</span>
+        <div className="pt-16 flex flex-col items-center gap-10">
+          <p className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.6em] neo-text-glow">Tournament Hosting Partners</p>
+          <div className="flex flex-wrap justify-center items-center gap-16 md:gap-32">
+            <div className="flex flex-col items-center gap-4 group">
+              <img 
+                src="/ADSS Logo.png" 
+                alt="Admiralty Secondary School" 
+                className="h-24 md:h-32 w-auto filter drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all duration-500 group-hover:scale-110" 
+              />
+              <span className="text-[10px] font-mono text-neo-slate/40 group-hover:text-neo-cyan transition-colors uppercase tracking-widest text-center">Admiralty Secondary School</span>
             </div>
-            <div className="flex flex-col items-center gap-3 group">
-              <img src="/NYP Lgo.svg" alt="Nanyang Polytechnic" className="h-16 md:h-20 w-auto grayscale group-hover:grayscale-0 transition-all duration-500" />
-              <span className="text-[8px] font-mono text-neo-slate/40 group-hover:text-neo-amber transition-colors uppercase tracking-widest text-center">Nanyang Polytechnic</span>
+            <div className="flex flex-col items-center gap-4 group">
+              <img 
+                src="/NYP Lgo.svg" 
+                alt="Nanyang Polytechnic" 
+                className="h-24 md:h-32 w-auto filter drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all duration-500 group-hover:scale-110" 
+              />
+              <span className="text-[10px] font-mono text-neo-slate/40 group-hover:text-neo-amber transition-colors uppercase tracking-widest text-center">Nanyang Polytechnic</span>
             </div>
           </div>
         </div>
