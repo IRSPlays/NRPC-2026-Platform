@@ -9,8 +9,43 @@ interface TimeLeft {
   hours: number;
   minutes: number;
   seconds: number;
-  milliseconds: number;
 }
+
+const RollingDigit = ({ value }: { value: number }) => {
+  const digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  
+  return (
+    <div className="relative h-[1.2em] overflow-hidden leading-none">
+      <div 
+        className="flex flex-col transition-transform duration-700 ease-[cubic-bezier(0.45,0.05,0.55,0.95)]"
+        style={{ transform: `translateY(-${value * 10}%)` }}
+      >
+        {digits.map((digit) => (
+          <div key={digit} className="h-[1.2em] flex items-center justify-center">
+            {digit}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const TimeSection = ({ value, label, colorClass }: { value: number, label: string, colorClass: string }) => {
+  const tens = Math.floor(value / 10);
+  const ones = value % 10;
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className={`flex text-6xl md:text-8xl font-black font-heading tracking-tighter ${colorClass}`}>
+        <RollingDigit value={tens} />
+        <RollingDigit value={ones} />
+      </div>
+      <span className="text-[10px] font-mono uppercase tracking-[0.4em] text-neo-slate/30 mt-2">
+        {label}
+      </span>
+    </div>
+  );
+};
 
 export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
@@ -18,7 +53,6 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
     hours: 0,
     minutes: 0,
     seconds: 0,
-    milliseconds: 0,
   });
   const [isExpired, setIsExpired] = useState(false);
 
@@ -31,7 +65,7 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
 
       if (diff <= 0) {
         setIsExpired(true);
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         return;
       }
 
@@ -39,114 +73,37 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-      const milliseconds = Math.floor((diff % 1000) / 10);
 
-      setTimeLeft({ days, hours, minutes, seconds, milliseconds });
+      setTimeLeft({ days, hours, minutes, seconds });
     };
 
     updateCountdown();
-    const interval = setInterval(updateCountdown, 50);
+    const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
   }, [targetDate]);
-
-  const formatNumber = (num: number, padding: number = 2): string => {
-    return num.toString().padStart(padding, '0');
-  };
 
   if (isExpired) {
     return (
       <div className="text-center py-8">
-        <div className="inline-flex items-center gap-3 px-8 py-4 bg-earth-moss rounded-xl border-2 border-earth-terracotta">
-          <span className="text-2xl font-heading font-bold text-earth-parchment">
-            Competition Has Started!
+        <div className="inline-flex items-center gap-3 px-8 py-4 bg-neo-cyan/10 rounded-2xl border border-neo-cyan/20">
+          <span className="text-2xl font-heading font-black text-neo-cyan uppercase tracking-widest neo-text-glow">
+            Mission Commenced
           </span>
         </div>
       </div>
     );
   }
 
-  const dateObj = new Date(targetDate);
-  const dateStr = dateObj.toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  const timeStr = dateObj.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-earth-moss/20 rounded-full border border-earth-moss/30">
-          <svg className="w-5 h-5 text-earth-moss" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <span className="text-earth-moss font-medium">
-            {dateStr} • {timeStr}
-          </span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-4 gap-3 md:gap-4">
-        <div className="flex flex-col items-center">
-          <div className="relative w-full aspect-square max-w-[100px] bg-gradient-to-br from-earth-moss to-earth-mossDark rounded-2xl border-2 border-earth-terracotta flex items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-            <span className="countdown-digit text-4xl md:text-5xl lg:text-6xl">
-              {formatNumber(timeLeft.days)}
-            </span>
-          </div>
-          <span className="mt-2 text-sm font-medium text-earth-mossDark dark:text-earth-stone">
-            DAYS
-          </span>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <div className="relative w-full aspect-square max-w-[100px] bg-gradient-to-br from-earth-terracotta to-[#D68B6C] rounded-2xl border-2 border-earth-moss flex items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
-            <span className="text-white text-4xl md:text-5xl lg:text-6xl font-heading font-bold">
-              {formatNumber(timeLeft.hours)}
-            </span>
-          </div>
-          <span className="mt-2 text-sm font-medium text-earth-mossDark dark:text-earth-stone">
-            HOURS
-          </span>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <div className="relative w-full aspect-square max-w-[100px] bg-gradient-to-br from-earth-moss to-earth-mossDark rounded-2xl border-2 border-earth-terracotta flex items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-            <span className="countdown-digit text-4xl md:text-5xl lg:text-6xl">
-              {formatNumber(timeLeft.minutes)}
-            </span>
-          </div>
-          <span className="mt-2 text-sm font-medium text-earth-mossDark dark:text-earth-stone">
-            MINUTES
-          </span>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <div className="relative w-full aspect-square max-w-[100px] bg-gradient-to-br from-earth-terracotta to-[#D68B6C] rounded-2xl border-2 border-earth-moss flex items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
-            <span className="text-white text-4xl md:text-5xl lg:text-6xl font-heading font-bold">
-              {formatNumber(timeLeft.seconds)}
-            </span>
-          </div>
-          <span className="mt-2 text-sm font-medium text-earth-mossDark dark:text-earth-stone">
-            SECONDS
-          </span>
-        </div>
-      </div>
-
-      <div className="flex justify-center mt-4">
-        <div className="flex items-center gap-1 px-3 py-1 bg-earth-moss/10 rounded-full border border-earth-moss/20">
-          <div className="w-2 h-2 rounded-full bg-bio-glow animate-pulse-subtle" />
-          <span className="text-xs text-earth-moss font-medium">
-            {formatNumber(timeLeft.milliseconds, 2)} ms
-          </span>
-        </div>
+    <div className="w-full">
+      <div className="flex justify-center items-baseline gap-4 md:gap-12">
+        <TimeSection value={timeLeft.days} label="Days" colorClass="text-white" />
+        <div className="text-4xl font-black text-white/10 self-center -mt-6">:</div>
+        <TimeSection value={timeLeft.hours} label="Hours" colorClass="text-white" />
+        <div className="text-4xl font-black text-white/10 self-center -mt-6">:</div>
+        <TimeSection value={timeLeft.minutes} label="Mins" colorClass="text-neo-cyan neo-text-glow" />
+        <div className="text-4xl font-black text-white/10 self-center -mt-6">:</div>
+        <TimeSection value={timeLeft.seconds} label="Secs" colorClass="text-neo-amber" />
       </div>
     </div>
   );

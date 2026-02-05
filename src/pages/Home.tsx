@@ -44,6 +44,21 @@ export default function Home() {
             <CountdownTimer targetDate={COMPETITION_DATE} />
           </div>
         </div>
+
+        {/* Hosted By Section */}
+        <div className="pt-12 flex flex-col items-center gap-8">
+          <p className="text-[10px] font-mono text-neo-slate/30 uppercase tracking-[0.5em]">Tournament Hosting Partners</p>
+          <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20 opacity-60 hover:opacity-100 transition-opacity duration-500">
+            <div className="flex flex-col items-center gap-3 group">
+              <img src="/ADSS Logo.png" alt="Admiralty Secondary School" className="h-16 md:h-20 w-auto grayscale group-hover:grayscale-0 transition-all duration-500" />
+              <span className="text-[8px] font-mono text-neo-slate/40 group-hover:text-neo-cyan transition-colors uppercase tracking-widest text-center">Admiralty Secondary School</span>
+            </div>
+            <div className="flex flex-col items-center gap-3 group">
+              <img src="/NYP Lgo.svg" alt="Nanyang Polytechnic" className="h-16 md:h-20 w-auto grayscale group-hover:grayscale-0 transition-all duration-500" />
+              <span className="text-[8px] font-mono text-neo-slate/40 group-hover:text-neo-amber transition-colors uppercase tracking-widest text-center">Nanyang Polytechnic</span>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Announcements Glass Panel */}
@@ -51,11 +66,11 @@ export default function Home() {
         <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-neo-cyan to-neo-amber opacity-10 group-hover:opacity-20 blur transition-all rounded-3xl"></div>
           <div className="relative neo-glass rounded-3xl p-1 overflow-hidden">
-            <div className="scanning-line absolute w-full top-0 left-0"></div>
+            <div className="scanning-line absolute w-full top-0 left-0 opacity-20"></div>
             <div className="p-6">
               <div className="flex items-center gap-3 mb-6 border-b border-neo-cyan/10 pb-4">
                 <ShieldAlert className="w-5 h-5 text-neo-amber" />
-                <h2 className="text-sm font-mono uppercase tracking-[0.3em] text-white">Central Intelligence Feed</h2>
+                <h2 className="text-sm font-mono uppercase tracking-[0.3em] text-white">Intelligence Broadcast Feed</h2>
               </div>
               <Announcements />
             </div>
@@ -147,7 +162,11 @@ export default function Home() {
         </Link>
       </section>
 
-      <footer className="text-center py-20">
+      <footer className="text-center py-20 border-t border-white/5">
+        <div className="flex justify-center gap-8 mb-8 opacity-20">
+           <img src="/ADSS Logo.png" alt="ADSS" className="h-8 w-auto" />
+           <img src="/NYP Lgo.svg" alt="NYP" className="h-8 w-auto" />
+        </div>
         <p className="text-neo-slate/30 text-xs font-mono uppercase tracking-[0.4em]">
           Powered by NRPC Intelligence // © 2026 De-Extinction Taskforce
         </p>
