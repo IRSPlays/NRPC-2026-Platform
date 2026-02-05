@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Upload, FileText, Clock, AlertCircle, CheckCircle2, ExternalLink, Eye } from 'lucide-react';
+import { Trophy, Upload, FileText, Clock, Activity, Target, ExternalLink, Eye, Users, Radio } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { scoresAPI, submissionsAPI, getFileUrl } from '../lib/api';
 import { Score, Submission } from '../types';
@@ -24,20 +24,16 @@ export default function TeamDashboard() {
 
   const loadData = async () => {
     if (!teamId) return;
-    
     setLoading(true);
-    setError('');
-    
     try {
       const [scoresData, submissionsData] = await Promise.all([
         scoresAPI.getByTeam(teamId),
         submissionsAPI.getByTeam(teamId)
       ]);
-      
       setScores(scoresData);
       setSubmissions(submissionsData);
     } catch (err: any) {
-      setError(err.message || 'Failed to load dashboard data');
+      setError(err.message || 'Failed to load team data');
     } finally {
       setLoading(false);
     }
@@ -50,271 +46,165 @@ export default function TeamDashboard() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-SG', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString('en-SG', {
+      day: '2-digit', month: 'short', year: 'numeric'
     });
   };
 
   const getBestScore = () => {
-    if (scores.length === 0) return null;
-    return scores.reduce((best, current) => 
-      current.total_score > (best?.total_score ?? -1) ? current : best
+    if (scores.length === 0) return 0;
+    return Math.max(...scores.map(s => s.total_score));
+  };
+
+  const getPosterScore = (sub: Submission) => {
+    if (!sub.concept_score) return 0;
+    return (sub.concept_score || 0) + (sub.future_score || 0) + (sub.organization_score || 0) + (sub.aesthetics_score || 0);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-40 gap-4">
+        <div className="w-12 h-12 border-2 border-neo-cyan/20 border-t-neo-cyan rounded-full animate-spin" />
+        <span className="text-xs font-mono text-neo-cyan/60 animate-pulse uppercase tracking-[0.4em]">Loading Dashboard...</span>
+      </div>
     );
-  };
-
-  const getTotalPosterScore = (sub: Submission) => {
-    if (!sub.concept_score) return null;
-    return (sub.concept_score || 0) + 
-           (sub.future_score || 0) + 
-           (sub.organization_score || 0) + 
-           (sub.aesthetics_score || 0);
-  };
-
-  if (!isTeam) {
-    return null;
   }
 
-  const bestScore = getBestScore();
-
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 rounded-2xl p-8 text-white">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold font-heading flex items-center gap-3">
-              <Trophy className="w-8 h-8 text-[#14FFEC]" />
-              Team Dashboard
-            </h1>
-            <p className="text-slate-400 mt-2 text-lg">
-              Welcome back, <span className="text-white font-semibold">{teamName}</span>
-            </p>
+    <div className="max-w-7xl mx-auto space-y-10 pb-20">
+      {/* Team Header */}
+      <section className="relative overflow-hidden neo-glass rounded-[2rem] border-neo-cyan/10 p-10">
+        <div className="scanning-line absolute w-full top-0 left-0 opacity-10"></div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-neo-cyan/10 flex items-center justify-center border border-neo-cyan/30">
+              <Users className="w-8 h-8 text-neo-cyan" />
+            </div>
+            <div>
+              <div className="text-[10px] font-mono text-neo-cyan/60 uppercase tracking-[0.3em] mb-1">Authenticated Team Member</div>
+              <h1 className="text-4xl font-heading font-black text-white uppercase tracking-tighter">
+                Team: <span className="text-neo-cyan neo-text-glow">{teamName || 'Team Dashboard'}</span>
+              </h1>
+            </div>
           </div>
           <button
             onClick={() => navigate('/submit')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#0D7377] hover:bg-[#0A5A5D] rounded-lg font-medium transition-colors"
+            className="btn-neo-amber flex items-center gap-3 py-4 px-8"
           >
             <Upload className="w-5 h-5" />
             Submit Poster
           </button>
         </div>
-      </div>
+      </section>
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-            <AlertCircle className="w-5 h-5" />
-            <span>{error}</span>
-          </div>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-[#0D7377] border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <>
-          {/* Stats Overview */}
-          <div className="grid md:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Robot Runs</div>
-              <div className="text-3xl font-bold text-slate-900 dark:text-white">{scores.length}</div>
+      {/* Metrics Grid */}
+      <section className="grid md:grid-cols-4 gap-6">
+        {[
+          { label: 'Total Missions', val: scores.length, icon: Radio, color: 'text-neo-cyan' },
+          { label: 'Highest Score', val: getBestScore(), icon: Target, color: 'text-neo-amber', sub: '/ 155 PTS' },
+          { label: 'Submissions', val: submissions.length, icon: FileText, color: 'text-neo-cyan' },
+          { label: 'Poster Score', val: submissions[0] && submissions[0].concept_score ? getPosterScore(submissions[0]) : '--', icon: Activity, color: 'text-neo-amber', sub: '/ 100 PTS' },
+        ].map((m, i) => (
+          <div key={i} className="neo-glass rounded-2xl p-6 border-white/5 relative group hover:border-neo-cyan/30 transition-all">
+            <div className="flex items-start justify-between mb-4">
+              <span className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest">{m.label}</span>
+              <m.icon className={`w-4 h-4 ${m.color} opacity-40 group-hover:opacity-100 transition-opacity`} />
             </div>
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Best Score</div>
-              <div className="text-3xl font-bold text-[#0D7377]">
-                {bestScore ? bestScore.total_score : '-'}
-              </div>
-              <div className="text-xs text-slate-400 mt-1">/ 155 points</div>
-            </div>
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Poster Submissions</div>
-              <div className="text-3xl font-bold text-slate-900 dark:text-white">{submissions.length}</div>
-            </div>
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Poster Score</div>
-              <div className="text-3xl font-bold text-[#0D7377]">
-                {submissions.length > 0 && submissions[0].concept_score 
-                  ? getTotalPosterScore(submissions[0]) 
-                  : '-'}
-              </div>
-              <div className="text-xs text-slate-400 mt-1">/ 100 points</div>
+            <div className="flex items-baseline gap-2">
+              <span className={`text-4xl font-black font-mono ${m.color}`}>{m.val}</span>
+              {m.sub && <span className="text-[10px] font-mono text-neo-slate/30">{m.sub}</span>}
             </div>
           </div>
+        ))}
+      </section>
 
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* Robot Scores */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-[#0D7377]" />
-                  Robot Mission Scores
-                </h2>
-                <a 
-                  href="/calculator" 
-                  className="text-sm text-[#0D7377] hover:underline flex items-center gap-1"
-                >
-                  Calculator <ExternalLink className="w-4 h-4" />
-                </a>
+      <div className="grid lg:grid-cols-2 gap-10">
+        {/* Mission History */}
+        <div className="neo-glass rounded-3xl border-white/5 overflow-hidden">
+          <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+            <h2 className="text-sm font-mono font-bold text-white uppercase tracking-[0.2em] flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-neo-cyan" />
+              Mission Results
+            </h2>
+          </div>
+          
+          <div className="divide-y divide-white/5">
+            {scores.length === 0 ? (
+              <div className="p-12 text-center text-neo-slate/30 font-mono text-xs uppercase tracking-widest">
+                No scores recorded yet
               </div>
-              
-              {scores.length === 0 ? (
-                <div className="p-8 text-center">
-                  <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Trophy className="w-8 h-8 text-slate-400" />
+            ) : (
+              scores.map((score) => (
+                <div key={score.id} className="p-6 hover:bg-white/[0.02] transition-colors flex items-center justify-between group">
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-mono text-neo-cyan/40 uppercase tracking-tighter">Mission ID: {score.id} // Date: {formatDate(score.created_at)}</div>
+                    <div className="text-xl font-black font-mono text-white group-hover:text-neo-cyan transition-colors">{score.total_score} PTS</div>
                   </div>
-                  <p className="text-slate-500 dark:text-slate-400">No scores recorded yet</p>
-                  <p className="text-sm text-slate-400 mt-1">
-                    Your scores will appear here after judging
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {scores.map((score) => (
-                    <div key={score.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-slate-900 dark:text-white">
-                          Run #{score.id}
-                        </span>
-                        <span className="text-sm text-slate-500 dark:text-slate-400">
-                          {formatDate(score.created_at)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <div className="flex items-center gap-1 text-[#0D7377] font-semibold">
-                          <Trophy className="w-4 h-4" />
-                          {score.total_score} pts
-                        </div>
-                        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                          <Clock className="w-4 h-4" />
-                          {formatTime(score.completion_time_seconds)}
-                        </div>
-                        <div className="text-slate-500 dark:text-slate-400">
-                          Judge: {score.judge_name}
-                        </div>
-                      </div>
-                      <div className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                        Missions: {score.mission1}+{score.mission2}+{score.mission3}+{score.mission4}+{score.mission5}+{score.mission6}+{score.mission7}
-                      </div>
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <div className="text-[10px] font-mono text-neo-slate/40 uppercase">Time Taken</div>
+                      <div className="text-sm font-mono text-neo-amber">{formatTime(score.completion_time_seconds)}</div>
                     </div>
-                  ))}
+                    <div className="w-px h-8 bg-white/5"></div>
+                    <div className="text-right">
+                      <div className="text-[10px] font-mono text-neo-slate/40 uppercase">Judge</div>
+                      <div className="text-sm font-mono text-neo-slate/80">{score.judge_name}</div>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
+              ))
+            )}
+          </div>
+        </div>
 
-            {/* Poster Submissions */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-[#0D7377]" />
-                  Poster Submissions
-                </h2>
-                <button
-                  onClick={() => navigate('/submit')}
-                  className="text-sm text-[#0D7377] hover:underline"
-                >
-                  + New Submission
+        {/* Submissions */}
+        <div className="neo-glass rounded-3xl border-white/5 overflow-hidden">
+          <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+            <h2 className="text-sm font-mono font-bold text-white uppercase tracking-[0.2em] flex items-center gap-2">
+              <FileText className="w-4 h-4 text-neo-amber" />
+              Poster Submissions
+            </h2>
+          </div>
+          
+          <div className="divide-y divide-white/5">
+            {submissions.length === 0 ? (
+              <div className="p-12 text-center">
+                <button onClick={() => navigate('/submit')} className="text-xs font-mono text-neo-amber hover:text-white uppercase tracking-widest transition-colors">
+                  [!] Click here to submit your poster
                 </button>
               </div>
-              
-              {submissions.length === 0 ? (
-                <div className="p-8 text-center">
-                  <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FileText className="w-8 h-8 text-slate-400" />
-                  </div>
-                  <p className="text-slate-500 dark:text-slate-400">No submissions yet</p>
-                  <button
-                    onClick={() => navigate('/submit')}
-                    className="mt-4 px-4 py-2 bg-[#0D7377] text-white rounded-lg text-sm hover:bg-[#0A5A5D] transition-colors"
-                  >
-                    Submit Your Poster
-                  </button>
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {submissions.map((sub) => (
-                    <div key={sub.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <span className="font-medium text-slate-900 dark:text-white block">
-                            {sub.original_filename}
-                          </span>
-                          <span className="text-xs text-slate-500 dark:text-slate-400">
-                            {formatDate(sub.submitted_at)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {sub.concept_score ? (
-                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full font-medium flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" />
-                              Scored
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs rounded-full font-medium flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              Pending
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {sub.concept_score && (
-                        <div className="mt-3 grid grid-cols-4 gap-2 text-xs">
-                          <div className="bg-slate-50 dark:bg-slate-700 p-2 rounded text-center">
-                            <div className="text-slate-500 dark:text-slate-400">Concept</div>
-                            <div className="font-semibold text-slate-900 dark:text-white">{sub.concept_score}/40</div>
-                          </div>
-                          <div className="bg-slate-50 dark:bg-slate-700 p-2 rounded text-center">
-                            <div className="text-slate-500 dark:text-slate-400">Future</div>
-                            <div className="font-semibold text-slate-900 dark:text-white">{sub.future_score}/30</div>
-                          </div>
-                          <div className="bg-slate-50 dark:bg-slate-700 p-2 rounded text-center">
-                            <div className="text-slate-500 dark:text-slate-400">Org</div>
-                            <div className="font-semibold text-slate-900 dark:text-white">{sub.organization_score}/20</div>
-                          </div>
-                          <div className="bg-slate-50 dark:bg-slate-700 p-2 rounded text-center">
-                            <div className="text-slate-500 dark:text-slate-400">Design</div>
-                            <div className="font-semibold text-slate-900 dark:text-white">{sub.aesthetics_score}/10</div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="mt-3 flex items-center gap-2">
-                        {sub.submission_type === 'link' ? (
-                          <a
-                            href={sub.external_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-[#0D7377] hover:underline flex items-center gap-1"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                            View Link
-                          </a>
-                        ) : (
-                          <a
-                            href={getFileUrl(sub.file_path)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-[#0D7377] hover:underline flex items-center gap-1"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View File
-                          </a>
-                        )}
-                      </div>
+            ) : (
+              submissions.map((sub) => (
+                <div key={sub.id} className="p-6 hover:bg-white/[0.02] transition-colors">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="space-y-1">
+                      <div className="text-sm font-bold text-white truncate max-w-[200px]">{sub.original_filename}</div>
+                      <div className="text-[10px] font-mono text-neo-slate/40 uppercase">{formatDate(sub.submitted_at)}</div>
                     </div>
-                  ))}
+                    {sub.concept_score ? (
+                      <span className="px-3 py-1 bg-neo-cyan/10 border border-neo-cyan/20 text-neo-cyan text-[10px] font-mono uppercase rounded-full">Scored</span>
+                    ) : (
+                      <span className="px-3 py-1 bg-white/5 border border-white/10 text-neo-slate/40 text-[10px] font-mono uppercase rounded-full animate-pulse">Pending...</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    {sub.submission_type === 'link' ? (
+                      <a href={sub.external_link} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono text-neo-cyan hover:neo-text-glow flex items-center gap-2 uppercase tracking-widest border border-neo-cyan/20 px-3 py-2 rounded-lg bg-neo-cyan/5">
+                        <ExternalLink className="w-3 h-3" /> View Link
+                      </a>
+                    ) : (
+                      <a href={getFileUrl(sub.file_path)} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono text-neo-cyan hover:neo-text-glow flex items-center gap-2 uppercase tracking-widest border border-neo-cyan/20 px-3 py-2 rounded-lg bg-neo-cyan/5">
+                        <Eye className="w-3 h-3" /> View File
+                      </a>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
+              ))
+            )}
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

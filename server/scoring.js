@@ -23,7 +23,6 @@ export function calculateMissionScore(missionId, data) {
 }
 
 // Mission 1: Clear the way (30 pts)
-// 5 rocks × 5 pts = 25, bonus 5 if all collected
 function calculateMission1(data) {
   const rocks = [
     data.rock1 || false,
@@ -36,7 +35,6 @@ function calculateMission1(data) {
   const rocksCollected = rocks.filter(r => r).length;
   const baseScore = rocksCollected * 5;
   
-  // STRICT: Bonus only if ALL 5 rocks collected
   let bonus = 0;
   if (data.bonus && rocksCollected === 5) {
     bonus = 5;
@@ -48,22 +46,20 @@ function calculateMission1(data) {
     score: total,
     max: 30,
     details: [
-      { label: 'Rocks collected', value: rocksCollected, points: baseScore },
-      { label: 'All rocks bonus', value: bonus > 0 ? 'Yes' : 'No', points: bonus }
+      { label: 'Rocks dropped off in Processing Plant', value: rocksCollected, points: baseScore },
+      { label: 'All rocks dropped off (EXTRA)', value: bonus > 0 ? 'Yes' : 'No', points: bonus }
     ],
-    warnings: data.bonus && rocksCollected < 5 ? ['Bonus ignored: Not all rocks collected'] : []
+    warnings: data.bonus && rocksCollected < 5 ? ['Bonus ignored: Not all rocks dropped off'] : []
   };
 }
 
 // Mission 2: Feeding time! (15 pts)
-// 2 meat × 5 pts = 10, bonus 5 if both launched
 function calculateMission2(data) {
   const meat1 = data.meat1 || false;
   const meat2 = data.meat2 || false;
   
   const baseScore = (meat1 ? 5 : 0) + (meat2 ? 5 : 0);
   
-  // STRICT: Bonus only if BOTH meat launched
   let bonus = 0;
   if (data.bonus && meat1 && meat2) {
     bonus = 5;
@@ -75,15 +71,14 @@ function calculateMission2(data) {
     score: total,
     max: 15,
     details: [
-      { label: 'Meat launched', value: (meat1 ? 1 : 0) + (meat2 ? 1 : 0), points: baseScore },
-      { label: 'Both meat bonus', value: bonus > 0 ? 'Yes' : 'No', points: bonus }
+      { label: 'Meat launched into enclosure', value: (meat1 ? 1 : 0) + (meat2 ? 1 : 0), points: baseScore },
+      { label: 'Both pieces successfully launched (EXTRA)', value: bonus > 0 ? 'Yes' : 'No', points: bonus }
     ],
     warnings: data.bonus && !(meat1 && meat2) ? ['Bonus ignored: Not both meat pieces launched'] : []
   };
 }
 
-// Mission 3: Move the hay bales (30 pts)
-// 3 bales × (5 pickup + 5 forest) = 30
+// Mission 3: Store the hay bales (30 pts)
 function calculateMission3(data) {
   const bales = [
     { pickup: data.bale1_pickup || false, forest: data.bale1_forest || false },
@@ -96,20 +91,15 @@ function calculateMission3(data) {
   
   bales.forEach((bale, idx) => {
     let baleScore = 0;
-    let status = 'Not picked up';
-    
     if (bale.pickup) {
       baleScore += 5;
-      status = 'Picked up';
-      
       if (bale.forest) {
         baleScore += 5;
-        status = 'In forest';
       }
     }
     
     score += baleScore;
-    details.push({ label: `Bale ${idx + 1}`, value: status, points: baleScore });
+    details.push({ label: `Bale ${idx + 1} score`, value: baleScore + ' PTS', points: baleScore });
   });
   
   return {
@@ -120,41 +110,29 @@ function calculateMission3(data) {
   };
 }
 
-// Mission 4: Collect the bones (20 pts)
-// 3 bones × (2 pickup + 3 base) = 15, bonus 5 if all in base
+// Mission 4: Collect the fossils (20 pts)
 function calculateMission4(data) {
-  const bones = [
+  const fossils = [
     { pickup: data.bone1_pickup || false, base: data.bone1_base || false },
     { pickup: data.bone2_pickup || false, base: data.bone2_base || false },
     { pickup: data.bone3_pickup || false, base: data.bone3_base || false }
   ];
   
   let baseScore = 0;
-  const details = [];
-  let bonesInBase = 0;
+  let fossilsInBase = 0;
   
-  bones.forEach((bone, idx) => {
-    let boneScore = 0;
-    let status = 'Not collected';
-    
-    if (bone.pickup) {
-      boneScore += 2;
-      status = 'Picked up';
-      
-      if (bone.base) {
-        boneScore += 3;
-        status = 'In base';
-        bonesInBase++;
+  fossils.forEach((fossil) => {
+    if (fossil.pickup) {
+      baseScore += 2;
+      if (fossil.base) {
+        baseScore += 3;
+        fossilsInBase++;
       }
     }
-    
-    baseScore += boneScore;
-    details.push({ label: `Bone ${idx + 1}`, value: status, points: boneScore });
   });
   
-  // STRICT: Bonus only if ALL 3 bones in base
   let bonus = 0;
-  if (data.bonus && bonesInBase === 3) {
+  if (data.bonus && fossilsInBase === 3) {
     bonus = 5;
   }
   
@@ -164,100 +142,55 @@ function calculateMission4(data) {
     score: total,
     max: 20,
     details: [
-      ...details,
-      { label: 'All bones in base bonus', value: bonus > 0 ? 'Yes' : 'No', points: bonus }
+      { label: 'Fossil base score', value: baseScore, points: baseScore },
+      { label: 'All 3 fossils fully in base (EXTRA)', value: bonus > 0 ? 'Yes' : 'No', points: bonus }
     ],
-    warnings: data.bonus && bonesInBase < 3 ? ['Bonus ignored: Not all bones in base'] : []
+    warnings: data.bonus && fossilsInBase < 3 ? ['Bonus ignored: Not all fossils in base'] : []
   };
 }
 
-// Mission 5: Sanctuary Tour (30 pts) - CRITICAL STRICT
-// 4 locations × 10 pts = 40... wait, the spec says 30 pts
-// Looking at spec: "i. For each researcher fully in base 10" - this seems wrong
-// Based on "4 locations including river, forest, fossil pit and base"
-// And "If a researcher topples 0", "If any locations are skipped 0"
-// Let's assume 4 locations × 7.5 = 30 or maybe it's just 30 for completing all
+// Mission 5: Sanctuary Tour (30 pts)
 function calculateMission5(data) {
-  const locations = [
-    data.river || false,
-    data.forest || false,
-    data.fossil_pit || false,
-    data.base || false
-  ];
-  
-  const locationsVisited = locations.filter(l => l).length;
-  const allVisited = locationsVisited === 4;
-  const baseLast = data.base_last || false;
-  const toppled = data.researcher_toppled || false;
+  const scientistsInBase = data.scientists_in_base || 0;
+  const scientistFell = data.researcher_toppled || false;
   
   let score = 0;
-  const warnings = [];
-  
-  // STRICT RULE 1: If researcher toppled = 0 points
-  if (toppled) {
-    score = 0;
-    warnings.push('Researcher toppled - 0 points');
-  }
-  // STRICT RULE 2: If any location skipped = 0 points
-  else if (!allVisited) {
-    score = 0;
-    warnings.push('Not all locations visited - 0 points');
-  }
-  // STRICT RULE 3: Base must be last
-  else if (!baseLast) {
-    score = 0;
-    warnings.push('Base not visited last - 0 points');
-  }
-  else {
-    score = 30;
+  if (!scientistFell) {
+    score = scientistsInBase * 10;
   }
   
   return {
     score,
     max: 30,
     details: [
-      { label: 'Locations visited', value: `${locationsVisited}/4`, points: toppled || !allVisited || !baseLast ? 0 : 30 },
-      { label: 'Base last', value: baseLast ? 'Yes' : 'No', points: 0 },
-      { label: 'Researcher toppled', value: toppled ? 'Yes' : 'No', points: 0 }
+      { label: 'Scientists fully in base', value: scientistsInBase, points: score },
+      { label: 'Scientist fell over', value: scientistFell ? 'Yes' : 'No', points: 0 }
     ],
-    warnings
+    warnings: scientistFell ? ['Scientist fell over - 0 points awarded'] : []
   };
 }
 
-// Mission 6: Rescue (15 pts) - CRITICAL STRICT
-// Picked up: 5, On stump: 10
-// If nest fell OR not on stump = 0 points
+// Mission 6: Rescue (15 pts)
 function calculateMission6(data) {
-  const pickedUp = data.nest_picked_up || false;
+  const nestOut = data.nest_picked_up || false;
   const onStump = data.nest_on_stump || false;
   const fell = data.nest_fell || false;
   
   let score = 0;
-  const warnings = [];
-  
-  // STRICT: If nest fell = 0 points
-  if (fell) {
-    score = 0;
-    warnings.push('Nest fell - 0 points');
-  }
-  // STRICT: If not on stump = 0 points
-  else if (!onStump) {
-    score = 0;
-    warnings.push('Nest not on stump - 0 points');
-  }
-  else if (pickedUp && onStump) {
-    score = 15;
+  if (!fell) {
+    if (nestOut) score += 5;
+    if (onStump) score += 10;
   }
   
   return {
     score,
     max: 15,
     details: [
-      { label: 'Nest picked up', value: pickedUp ? 'Yes' : 'No', points: pickedUp && onStump && !fell ? 5 : 0 },
-      { label: 'Nest on stump', value: onStump ? 'Yes' : 'No', points: pickedUp && onStump && !fell ? 10 : 0 },
+      { label: 'Nest out of starting position', value: nestOut ? 'Yes' : 'No', points: !fell && nestOut ? 5 : 0 },
+      { label: 'Nest upright on tree stump', value: onStump ? 'Yes' : 'No', points: !fell && onStump ? 10 : 0 },
       { label: 'Nest fell', value: fell ? 'Yes' : 'No', points: 0 }
     ],
-    warnings
+    warnings: fell ? ['Nest fell - 0 points awarded'] : []
   };
 }
 
@@ -270,7 +203,7 @@ function calculateMission7(data) {
     score,
     max: 15,
     details: [
-      { label: 'Plate pressed', value: pressed ? 'Yes' : 'No', points: score }
+      { label: 'Fan blades move when plate touched', value: pressed ? 'Yes' : 'No', points: score }
     ],
     warnings: []
   };
@@ -318,9 +251,8 @@ export function validatePosterFilename(filename, teamName, schoolName) {
   return { valid: true };
 }
 
-// Get ranking with tiebreaker (time)
+// Get ranking with tiebreaker (time) for Robot Performance
 export function calculateRankings(teams, scores) {
-  // Group scores by team and get best score
   const teamBestScores = {};
   
   scores.forEach(score => {
@@ -333,14 +265,12 @@ export function calculateRankings(teams, scores) {
     }
   });
   
-  // Create ranked list
   const ranked = Object.values(teamBestScores)
     .map(score => ({
       ...score,
       team: teams.find(t => t.id === score.team_id)
     }))
     .sort((a, b) => {
-      // Sort by score (desc), then by time (asc)
       if (b.total_score !== a.total_score) {
         return b.total_score - a.total_score;
       }
@@ -352,4 +282,67 @@ export function calculateRankings(teams, scores) {
     }));
   
   return ranked;
+}
+
+// Calculate Championship Ranking
+// 60% Robot (155), 20% Mechanical (100), 20% Poster (100)
+export function calculateChampionshipRankings(teams, scores, submissions) {
+  const teamStats = {};
+
+  scores.forEach(score => {
+    const teamId = score.team_id;
+    if (!teamStats[teamId]) teamStats[teamId] = { robot: 0, mech: 0, poster: 0, time: 999 };
+    
+    if (score.total_score > teamStats[teamId].robot) {
+      teamStats[teamId].robot = score.total_score;
+      teamStats[teamId].mech = score.mechanical_design_score || 0;
+      teamStats[teamId].time = score.completion_time_seconds;
+    } else if (score.total_score === teamStats[teamId].robot) {
+      if (score.completion_time_seconds < teamStats[teamId].time) {
+        teamStats[teamId].mech = score.mechanical_design_score || 0;
+        teamStats[teamId].time = score.completion_time_seconds;
+      }
+    }
+  });
+
+  submissions.forEach(sub => {
+    const teamId = sub.team_id;
+    if (!teamStats[teamId]) teamStats[teamId] = { robot: 0, mech: 0, poster: 0, time: 999 };
+    
+    if (sub.concept_score) {
+      const totalPoster = (sub.concept_score || 0) + 
+                          (sub.future_score || 0) + 
+                          (sub.organization_score || 0) + 
+                          (sub.aesthetics_score || 0);
+      if (totalPoster > teamStats[teamId].poster) {
+        teamStats[teamId].poster = totalPoster;
+      }
+    }
+  });
+
+  const rankings = teams.map(team => {
+    const stats = teamStats[team.id] || { robot: 0, mech: 0, poster: 0, time: 999 };
+    
+    const weightedRobot = (stats.robot / 155) * 60;
+    const weightedMech = (stats.mech / 100) * 20;
+    const weightedPoster = (stats.poster / 100) * 20;
+    
+    const championshipScore = weightedRobot + weightedMech + weightedPoster;
+
+    return {
+      team,
+      stats,
+      championshipScore: parseFloat(championshipScore.toFixed(2)),
+      details: {
+        weightedRobot: parseFloat(weightedRobot.toFixed(2)),
+        weightedMech: parseFloat(weightedMech.toFixed(2)),
+        weightedPoster: parseFloat(weightedPoster.toFixed(2))
+      }
+    };
+  });
+
+  return rankings.sort((a, b) => b.championshipScore - a.championshipScore).map((item, index) => ({
+    ...item,
+    rank: index + 1
+  }));
 }

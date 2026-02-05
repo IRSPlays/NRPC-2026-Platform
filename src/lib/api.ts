@@ -105,11 +105,12 @@ export const submissionsAPI = {
   
   getAll: (): Promise<Submission[]> => fetchWithAuth('/api/submissions'),
   
-  uploadFile: (teamId: number, file: File, originalFilename: string): Promise<{ success: boolean; submission: Submission }> => {
+  uploadFile: (teamId: number, file: File, originalFilename: string, submissionType?: string): Promise<{ success: boolean; submission: Submission }> => {
     const formData = new FormData();
     formData.append('team_id', teamId.toString());
     formData.append('file', file);
     formData.append('original_filename', originalFilename);
+    if (submissionType) formData.append('submission_type', submissionType);
     
     return fetch(`${API_URL}/api/submissions/file`, {
       method: 'POST',
@@ -118,9 +119,14 @@ export const submissionsAPI = {
     }).then(r => r.json());
   },
   
-  submitLink: (teamId: number, externalLink: string, originalFilename: string): Promise<{ success: boolean; submission: Submission }> => fetchWithAuth('/api/submissions/link', {
+  submitLink: (teamId: number, externalLink: string, originalFilename: string, submissionType?: string): Promise<{ success: boolean; submission: Submission }> => fetchWithAuth('/api/submissions/link', {
     method: 'POST',
-    body: JSON.stringify({ team_id: teamId, external_link: externalLink, original_filename: originalFilename }),
+    body: JSON.stringify({ 
+      team_id: teamId, 
+      external_link: externalLink, 
+      original_filename: originalFilename,
+      submission_type: submissionType
+    }),
   }),
   
   score: (id: number, scores: {
@@ -140,17 +146,57 @@ export const backupAPI = {
   create: (): Promise<{ success: boolean; path: string }> => fetchWithAuth('/api/backup', {
     method: 'POST',
   }),
-  
+
   list: (): Promise<BackupFile[]> => fetchWithAuth('/api/backup/list'),
-  
+
   download: (filename: string): Promise<Blob> => {
     return fetch(`${API_URL}/api/backup/download/${filename}`, {
       credentials: 'include',
     }).then(r => r.blob());
   },
-  
+
   restore: (backupData: any): Promise<{ success: boolean }> => fetchWithAuth('/api/backup/restore', {
     method: 'POST',
     body: JSON.stringify({ backupData }),
+  }),
+};
+
+// Announcements
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  priority: 'low' | 'medium' | 'high';
+  is_pinned: number;
+  is_active?: number;
+  created_at: string;
+  expires_at?: string;
+}
+
+export const announcementsAPI = {
+  getAll: (): Promise<Announcement[]> => fetchWithAuth('/api/announcements'),
+
+  create: (data: {
+    title: string;
+    content: string;
+    priority?: 'low' | 'medium' | 'high';
+    is_pinned?: boolean;
+    expires_at?: string;
+  }): Promise<{ success: boolean; announcement: Announcement }> => fetchWithAuth('/api/announcements', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  update: (id: number, data: Partial<Announcement>): Promise<{ success: boolean }> => fetchWithAuth(`/api/announcements/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+
+  delete: (id: number): Promise<{ success: boolean }> => fetchWithAuth(`/api/announcements/${id}`, {
+    method: 'DELETE',
+  }),
+
+  togglePin: (id: number): Promise<{ success: boolean; is_pinned: boolean }> => fetchWithAuth(`/api/announcements/${id}/pin`, {
+    method: 'PATCH',
   }),
 };

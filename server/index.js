@@ -6,7 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { getDb, backupDatabase, restoreDatabase } from './database.js';
-import { calculateTotalScore, calculateRankings } from './scoring.js';
+import { calculateTotalScore, calculateRankings, calculateChampionshipRankings } from './scoring.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +34,9 @@ app.use('/uploads', (req, res, next) => {
     '.gif': 'image/gif',
     '.webp': 'image/webp',
     '.bmp': 'image/bmp',
-    '.tiff': 'image/tiff'
+    '.tiff': 'image/tiff',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.xls': 'application/vnd.ms-excel'
   };
   
   if (mimeTypes[ext]) {
@@ -91,12 +93,12 @@ const upload = multer({
   storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
   fileFilter: (req, file, cb) => {
-    const allowed = ['.pdf', '.pptx', '.ppt', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff'];
+    const allowed = ['.pdf', '.pptx', '.ppt', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff', '.xlsx', '.xls'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Allowed: PDF, PPTX, PPT, PNG, JPG, JPEG, GIF, WEBP, BMP, TIFF'));
+      cb(new Error('Invalid file type. Allowed: PDF, PPTX, Images, Excel'));
     }
   }
 });
@@ -301,7 +303,7 @@ app.get('/api/submissions', async (req, res) => {
 
 // Create submission (file upload)
 app.post('/api/submissions/file', upload.single('file'), async (req, res) => {
-  const { team_id, original_filename } = req.body;
+  const { team_id, original_filename, submission_type } = req.body;
   
   // Verify team is logged in
   if (req.cookies.team_id !== team_id) {
@@ -313,11 +315,13 @@ app.post('/api/submissions/file', upload.single('file'), async (req, res) => {
     return res.status(400).json({ error: 'No file uploaded' });
   }
   
+  const type = submission_type || 'file'; // Default to file if not specified
+
   try {
     const db = await getDb();
     const result = await db.run(
       'INSERT INTO submissions (team_id, submission_type, file_path, original_filename) VALUES (?, ?, ?, ?)',
-      [team_id, 'file', req.file.filename, original_filename]
+      [team_id, type, req.file.filename, original_filename]
     );
     
     res.json({ 
@@ -325,7 +329,7 @@ app.post('/api/submissions/file', upload.single('file'), async (req, res) => {
       submission: { 
         id: result.lastID,
         team_id,
-        submission_type: 'file',
+        submission_type: type,
         file_path: req.file.filename,
         original_filename
       } 
@@ -336,9 +340,9 @@ app.post('/api/submissions/file', upload.single('file'), async (req, res) => {
   }
 });
 
-// Create submission (external link)
+// Create submission (external link or robot run link)
 app.post('/api/submissions/link', async (req, res) => {
-  const { team_id, external_link, original_filename } = req.body;
+  const { team_id, external_link, original_filename, submission_type } = req.body;
   
   // Verify team is logged in
   if (req.cookies.team_id !== team_id) {
@@ -349,11 +353,13 @@ app.post('/api/submissions/link', async (req, res) => {
     return res.status(400).json({ error: 'Valid URL required' });
   }
   
+  const type = submission_type || 'link';
+
   try {
     const db = await getDb();
     const result = await db.run(
       'INSERT INTO submissions (team_id, submission_type, external_link, original_filename) VALUES (?, ?, ?, ?)',
-      [team_id, 'link', external_link, original_filename]
+      [team_id, type, external_link, original_filename]
     );
     
     res.json({ 
@@ -361,7 +367,7 @@ app.post('/api/submissions/link', async (req, res) => {
       submission: { 
         id: result.lastID,
         team_id,
-        submission_type: 'link',
+        submission_type: type,
         external_link,
         original_filename
       } 
@@ -400,14 +406,14 @@ app.post('/api/scores/calculate', async (req, res) => {
 
 // Save score (judge only)
 app.post('/api/scores', requireJudge, async (req, res) => {
-  const { team_id, judge_name, missionData, completion_time_seconds, judge_notes } = req.body;
+  const { team_id, judge_name, missionData, completion_time_seconds, mechanical_design_score, judge_notes } = req.body;
   
   const result = calculateTotalScore(missionData);
   
   try {
     const db = await getDb();
     const scoreResult = await db.run(
-      'INSERT INTO scores (team_id, judge_name, mission_data, mission1, mission2, mission3, mission4, mission5, mission6, mission7, total_score, completion_time_seconds, judge_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO scores (team_id, judge_name, mission_data, mission1, mission2, mission3, mission4, mission5, mission6, mission7, total_score, completion_time_seconds, mechanical_design_score, judge_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         team_id,
         judge_name,
@@ -419,8 +425,10 @@ app.post('/api/scores', requireJudge, async (req, res) => {
         result.missions[4].score,
         result.missions[5].score,
         result.missions[6].score,
+        result.missions[7] ? result.missions[7].score : 0, // Ensure mission 7 doesn't break if logic changes
         result.total,
         completion_time_seconds,
+        mechanical_design_score || 0,
         judge_notes
       ]
     );
@@ -430,7 +438,8 @@ app.post('/api/scores', requireJudge, async (req, res) => {
       score: {
         id: scoreResult.lastID,
         ...result,
-        completion_time_seconds
+        completion_time_seconds,
+        mechanical_design_score
       }
     });
   } catch (err) {
@@ -464,13 +473,15 @@ app.get('/api/scores/team/:teamId', async (req, res) => {
 });
 
 // Get all scores with rankings (admin only)
+// Returns Championship rankings
 app.get('/api/scores/leaderboard', requireAdmin, async (req, res) => {
   try {
     const db = await getDb();
     const teams = await db.all('SELECT * FROM teams');
     const scores = await db.all('SELECT * FROM scores');
+    const submissions = await db.all('SELECT * FROM submissions');
     
-    const rankings = calculateRankings(teams, scores);
+    const rankings = calculateChampionshipRankings(teams, scores, submissions);
     res.json(rankings);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -552,10 +563,110 @@ app.get('/api/backup/download/:filename', requireAdmin, (req, res) => {
 // Restore from backup
 app.post('/api/backup/restore', requireAdmin, async (req, res) => {
   const { backupData } = req.body;
-  
+
   try {
     await restoreDatabase(backupData);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ===== ANNOUNCEMENT ROUTES =====
+
+// Get active announcements (public)
+app.get('/api/announcements', async (req, res) => {
+  try {
+    const db = await getDb();
+    const now = new Date().toISOString();
+    const announcements = await db.all(`
+      SELECT id, title, content, priority, is_pinned, created_at, expires_at
+      FROM announcements
+      WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > ?)
+      ORDER BY is_pinned DESC, created_at DESC
+    `, [now]);
+    res.json(announcements);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create announcement (admin only)
+app.post('/api/announcements', requireAdmin, async (req, res) => {
+  const { title, content, priority, is_pinned, expires_at } = req.body;
+
+  if (!title || !content) {
+    return res.status(400).json({ error: 'Title and content are required' });
+  }
+
+  try {
+    const db = await getDb();
+    const result = await db.run(
+      'INSERT INTO announcements (title, content, priority, is_pinned, expires_at) VALUES (?, ?, ?, ?, ?)',
+      [title, content, priority || 'medium', is_pinned ? 1 : 0, expires_at || null]
+    );
+
+    res.json({
+      success: true,
+      announcement: {
+        id: result.lastID,
+        title,
+        content,
+        priority: priority || 'medium',
+        is_pinned: !!is_pinned,
+        created_at: new Date().toISOString(),
+        expires_at
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update announcement (admin only)
+app.put('/api/announcements/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { title, content, priority, is_pinned, is_active, expires_at } = req.body;
+
+  try {
+    const db = await getDb();
+    await db.run(`
+      UPDATE announcements
+      SET title = ?, content = ?, priority = ?, is_pinned = ?, is_active = ?, expires_at = ?
+      WHERE id = ?
+    `, [title, content, priority, is_pinned ? 1 : 0, is_active ? 1 : 0, expires_at, id]);
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete announcement (admin only)
+app.delete('/api/announcements/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = await getDb();
+    await db.run('DELETE FROM announcements WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Toggle pin status (admin only)
+app.patch('/api/announcements/:id/pin', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = await getDb();
+    const ann = await db.get('SELECT is_pinned FROM announcements WHERE id = ?', [id]);
+    if (!ann) {
+      return res.status(404).json({ error: 'Announcement not found' });
+    }
+    await db.run('UPDATE announcements SET is_pinned = ? WHERE id = ?', [ann.is_pinned ? 0 : 1, id]);
+    res.json({ success: true, is_pinned: !ann.is_pinned });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

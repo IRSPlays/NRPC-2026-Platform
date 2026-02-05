@@ -3,99 +3,83 @@
 @tailwind utilities;
 
 :root {
-  font-family: 'Inter', system-ui, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  --neo-cyan: #66FCF1;
+  --neo-cyan-dark: #45A29E;
+  --neo-void: #0B0C10;
+  --neo-surface: #1F2833;
+  --neo-slate: #C5C6C7;
+  --neo-amber: #FFB300;
 }
 
 body {
-  margin: 0;
-  min-width: 320px;
+  @apply bg-neo-void text-neo-slate antialiased overflow-x-hidden;
+  background-image: 
+    linear-gradient(rgba(102, 252, 241, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(102, 252, 241, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
   min-height: 100vh;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 700;
+  @apply font-heading font-bold tracking-tight;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--neo-void); }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  background: var(--neo-cyan-dark);
+  border-radius: 10px;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: #334155;
+/* Neo-Paleo Core Utilities */
+@layer components {
+  .neo-glass {
+    @apply bg-neo-surface/40 backdrop-blur-md border border-neo-cyan/10 shadow-[0_0_30px_rgba(0,0,0,0.5)];
+  }
+
+  .neo-border-glow {
+    @apply border border-neo-cyan/20 shadow-[0_0_15px_rgba(102,252,241,0.1)];
+  }
+
+  .neo-text-glow {
+    text-shadow: 0 0 10px rgba(102, 252, 241, 0.4);
+  }
+
+  /* Migration Aliases (Temporarily mapping old names to new styles) */
+  .earth-card {
+    @apply neo-glass rounded-2xl border-neo-cyan/20 p-6 transition-all duration-300;
+  }
+
+  .bio-glow {
+    @apply shadow-[0_0_15px_rgba(102,252,241,0.15)] hover:shadow-[0_0_25px_rgba(102,252,241,0.3)] transition-all;
+  }
+
+  .earth-gradient {
+    @apply bg-neo-void;
+    background-image: radial-gradient(circle at 50% 50%, #1f2833 0%, #0b0c10 100%);
+  }
+
+  .btn-neo {
+    @apply px-6 py-3 bg-transparent border-2 border-neo-cyan text-neo-cyan font-heading font-bold rounded-lg 
+           hover:bg-neo-cyan hover:text-neo-void transition-all duration-300 shadow-[0_0_10px_rgba(102,252,241,0.2)];
+  }
+
+  .btn-neo-amber {
+    @apply px-6 py-3 bg-transparent border-2 border-neo-amber text-neo-amber font-heading font-bold rounded-lg 
+           hover:bg-neo-amber hover:text-neo-void transition-all duration-300 shadow-[0_0_10px_rgba(255,179,0,0.2)];
+  }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+/* Technical Animations */
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
 }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
-}
-
-/* Animations */
-@keyframes score-tick {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-.score-animate {
-  animation: score-tick 0.3s ease-in-out;
-}
-
-/* Glassmorphism */
-.glass {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.dark .glass {
-  background: rgba(20, 20, 20, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Hexagonal pattern */
-.hex-pattern {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg id='hexagons' fill='%239C92AC' fill-opacity='0.05' fill-rule='nonzero'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49.28V41L3 33.69V31h.01L15 37.35V49.28h2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-}
-
-/* Circuit lines */
-.circuit-line {
-  background: linear-gradient(90deg, 
-    transparent 0%, 
-    #0D7377 20%, 
-    #14FFEC 50%, 
-    #0D7377 80%, 
-    transparent 100%
-  );
+.scanning-line {
   height: 2px;
-}
-
-/* Form styles */
-input[type="checkbox"] {
-  accent-color: #0D7377;
-}
-
-/* Button hover glow */
-.btn-glow:hover {
-  box-shadow: 0 0 20px rgba(13, 115, 119, 0.4);
-}
-
-.dark .btn-glow:hover {
-  box-shadow: 0 0 20px rgba(20, 255, 236, 0.3);
+  background: linear-gradient(90deg, transparent, var(--neo-cyan), transparent);
+  animation: scan-line 4s linear infinite;
+  opacity: 0.2;
 }

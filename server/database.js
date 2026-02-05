@@ -38,7 +38,7 @@ async function initDatabase() {
     CREATE TABLE IF NOT EXISTS submissions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       team_id INTEGER REFERENCES teams(id),
-      submission_type TEXT CHECK(submission_type IN ('file', 'link')) NOT NULL,
+      submission_type TEXT CHECK(submission_type IN ('file', 'link', 'robot_run')) NOT NULL,
       file_path TEXT,
       external_link TEXT,
       original_filename TEXT,
@@ -67,10 +67,36 @@ async function initDatabase() {
       mission7 INTEGER DEFAULT 0,
       total_score INTEGER DEFAULT 0,
       completion_time_seconds INTEGER,
+      mechanical_design_score INTEGER DEFAULT 0,
       judge_notes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      priority TEXT CHECK(priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
+      is_pinned BOOLEAN DEFAULT 0,
+      is_active BOOLEAN DEFAULT 1,
+      expires_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Migration: Check and add mechanical_design_score if missing
+  try {
+    const tableInfo = await db.all("PRAGMA table_info(scores)");
+    const hasMechScore = tableInfo.some(col => col.name === 'mechanical_design_score');
+    if (!hasMechScore) {
+      console.log('Migrating: Adding mechanical_design_score to scores table...');
+      await db.run("ALTER TABLE scores ADD COLUMN mechanical_design_score INTEGER DEFAULT 0");
+    }
+  } catch (err) {
+    console.error('Migration error:', err);
+  }
 
   console.log('✓ Database initialized successfully');
   return db;
@@ -89,16 +115,18 @@ export async function backupDatabase() {
   const database = await getDb();
   const timestamp = Date.now();
   const backupPath = path.join('./backups', `backup-${timestamp}.json`);
-  
+
   const teams = await database.all('SELECT * FROM teams');
   const submissions = await database.all('SELECT * FROM submissions');
   const scores = await database.all('SELECT * FROM scores');
-  
+  const announcements = await database.all('SELECT * FROM announcements');
+
   const backup = {
     timestamp: new Date().toISOString(),
     teams,
     submissions,
-    scores
+    scores,
+    announcements
   };
 
   if (!fs.existsSync('./backups')) {
@@ -128,10 +156,11 @@ export async function backupDatabase() {
 // Restore from backup
 export async function restoreDatabase(backupData) {
   const database = await getDb();
-  
+
   await database.run('DELETE FROM scores');
   await database.run('DELETE FROM submissions');
   await database.run('DELETE FROM teams');
+  await database.run('DELETE FROM announcements');
 
   for (const team of backupData.teams) {
     await database.run(
@@ -149,9 +178,18 @@ export async function restoreDatabase(backupData) {
 
   for (const score of backupData.scores) {
     await database.run(
-      'INSERT INTO scores (id, team_id, judge_name, mission_data, mission1, mission2, mission3, mission4, mission5, mission6, mission7, total_score, completion_time_seconds, judge_notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [score.id, score.team_id, score.judge_name, score.mission_data, score.mission1, score.mission2, score.mission3, score.mission4, score.mission5, score.mission6, score.mission7, score.total_score, score.completion_time_seconds, score.judge_notes, score.created_at]
+      'INSERT INTO scores (id, team_id, judge_name, mission_data, mission1, mission2, mission3, mission4, mission5, mission6, mission7, total_score, completion_time_seconds, mechanical_design_score, judge_notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [score.id, score.team_id, score.judge_name, score.mission_data, score.mission1, score.mission2, score.mission3, score.mission4, score.mission5, score.mission6, score.mission7, score.total_score, score.completion_time_seconds, score.mechanical_design_score || 0, score.judge_notes, score.created_at]
     );
+  }
+
+  if (backupData.announcements) {
+    for (const ann of backupData.announcements) {
+      await database.run(
+        'INSERT INTO announcements (id, title, content, priority, is_pinned, is_active, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [ann.id, ann.title, ann.content, ann.priority, ann.is_pinned ? 1 : 0, ann.is_active ? 1 : 0, ann.expires_at, ann.created_at]
+      );
+    }
   }
 }
 

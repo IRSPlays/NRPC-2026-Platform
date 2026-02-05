@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LayoutDashboard, Users, FileText, Calculator, Trophy, Database, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Calculator, Trophy, Database, LogOut, Megaphone, Terminal } from 'lucide-react';
 
 export default function Admin() {
   const { isAdmin, isJudge, logout } = useAuth();
@@ -14,73 +14,79 @@ export default function Admin() {
   };
 
   const navItems = [
-    { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
-    { path: '/admin/teams', label: 'Teams', icon: Users, adminOnly: true },
-    { path: '/admin/submissions', label: 'Submissions', icon: FileText, adminOnly: false },
-    { path: '/admin/scoring', label: 'Scoring', icon: Calculator, adminOnly: false },
-    { path: '/admin/leaderboard', label: 'Leaderboard', icon: Trophy, adminOnly: false },
-    { path: '/admin/backup', label: 'Backup', icon: Database, adminOnly: true },
+    { path: '/admin/dashboard', label: 'Sys.Overview', icon: LayoutDashboard, adminOnly: false },
+    { path: '/admin/announcements', label: 'Broadcasts', icon: Megaphone, adminOnly: true },
+    { path: '/admin/teams', label: 'Team.DB', icon: Users, adminOnly: true },
+    { path: '/admin/submissions', label: 'Uplink.Logs', icon: FileText, adminOnly: false },
+    { path: '/admin/scoring', label: 'Calc.Engine', icon: Calculator, adminOnly: false },
+    { path: '/admin/leaderboard', label: 'Rank.Table', icon: Trophy, adminOnly: false },
+    { path: '/admin/backup', label: 'Archive.Sys', icon: Database, adminOnly: true },
   ];
 
   const isActive = (path: string) => location.pathname === path;
 
-  // If authenticated and on login page, redirect to dashboard (one-time)
   useEffect(() => {
     if ((isAdmin || isJudge) && (location.pathname === '/admin' || location.pathname === '/admin/')) {
       navigate('/admin/dashboard', { replace: true });
     }
   }, [isAdmin, isJudge, location.pathname, navigate]);
 
-  // If not authenticated, just render the Outlet (login form)
   if (!isAdmin && !isJudge) {
     return <Outlet />;
   }
 
-  // Authenticated - show admin layout with sidebar
   return (
-    <div className="min-h-screen flex bg-light-bg dark:bg-dark-bg">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 hidden md:block">
-        <div className="p-6">
-          <h2 className="text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4">
-            Admin Panel
-          </h2>
-          <nav className="space-y-1">
-            {navItems.map((item) => {
-              if (item.adminOnly && !isAdmin) return null;
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    isActive(item.path)
-                      ? 'bg-[#0D7377]/10 text-[#0D7377]'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              Logout
-            </button>
+    <div className="min-h-screen flex bg-neo-void">
+      {/* Tech Navigation Rail */}
+      <aside className="w-20 lg:w-64 bg-neo-void border-r border-white/5 flex flex-col fixed h-full z-40 transition-all duration-300">
+        <div className="p-6 border-b border-white/5 flex items-center gap-3">
+          <div className="w-8 h-8 rounded bg-neo-amber/10 text-neo-amber flex items-center justify-center border border-neo-amber/20">
+            <Terminal className="w-5 h-5" />
           </div>
+          <span className="hidden lg:block font-heading font-bold text-white tracking-tight">ADMIN.OS</span>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          {navItems.map((item) => {
+            if (item.adminOnly && !isAdmin) return null;
+            const Icon = item.icon;
+            const active = isActive(item.path);
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center gap-4 px-3 py-3 rounded-xl transition-all group relative ${
+                  active 
+                    ? 'bg-neo-amber/10 text-neo-amber border border-neo-amber/20' 
+                    : 'text-neo-slate/40 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${active ? 'animate-pulse' : ''}`} />
+                <span className="hidden lg:block text-xs font-mono font-bold uppercase tracking-wider">
+                  {item.label}
+                </span>
+                {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-neo-amber rounded-r"></div>}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 border-t border-white/5">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-4 px-3 py-3 rounded-xl text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="hidden lg:block text-xs font-mono font-bold uppercase tracking-wider">Terminate</span>
+          </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6 md:p-8 overflow-auto">
-        <Outlet />
+      {/* Main Content Area */}
+      <main className="flex-1 ml-20 lg:ml-64 p-8 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto animate-fade-in">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

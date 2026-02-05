@@ -1,137 +1,161 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Eye, EyeOff, Lock } from 'lucide-react';
+import { Lock, User, Key, ScanLine, ShieldCheck, Activity } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { teamsAPI } from '../lib/api';
 import { Team } from '../types';
 
 export default function TeamLogin() {
+  const [teams, setTeams] = useState<Team[]>([]);
   const [teamId, setTeamId] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [teamsLoaded, setTeamsLoaded] = useState(false);
+  const [fetchingTeams, setFetchingTeams] = useState(true);
   
-  const navigate = useNavigate();
   const { loginAsTeam } = useAuth();
+  const navigate = useNavigate();
 
-  // Load teams on focus
-  const loadTeams = async () => {
-    if (!teamsLoaded) {
+  useEffect(() => {
+    const fetchTeams = async () => {
       try {
         const data = await teamsAPI.getAll();
         setTeams(data);
-        setTeamsLoaded(true);
       } catch (err) {
-        console.error('Failed to load teams:', err);
+        console.error('Failed to load teams');
+      } finally {
+        setFetchingTeams(false);
       }
-    }
-  };
+    };
+    fetchTeams();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    
+    if (!teamId) {
+      setError('Please select your team');
+      return;
+    }
 
+    setLoading(true);
     try {
       await loginAsTeam(teamId, password);
       navigate('/team-dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
+    } catch (err) {
+      setError('Access Denied: Invalid Credentials');
     } finally {
       setLoading(false);
     }
   };
 
+  const primaryTeams = teams.filter(t => t.category === 'Primary');
+  const secondaryTeams = teams.filter(t => t.category === 'Secondary');
+
   return (
-    <div className="max-w-md mx-auto">
-      <div className="bg-white dark:bg-dark-card rounded-2xl shadow-lg border border-gray-200 dark:border-dark-border overflow-hidden">
-        <div className="bg-gradient-to-r from-primary to-primary-light p-6">
-          <div className="flex items-center justify-center">
-            <Shield className="w-12 h-12 text-white" />
-          </div>
-          <h1 className="text-2xl font-heading font-bold text-white text-center mt-4">
-            Team Login
-          </h1>
-          <p className="text-white/80 text-center text-sm mt-1">
-            Access your dashboard and submit your poster
-          </p>
-        </div>
+    <div className="flex items-center justify-center min-h-[80vh] px-4">
+      <div className="w-full max-w-md relative">
+        {/* Decorative Elements */}
+        <div className="absolute inset-0 bg-neo-cyan/5 blur-3xl rounded-full"></div>
+        <div className="scanning-line absolute w-full top-0 left-0 opacity-20"></div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-              <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+        <div className="relative neo-glass rounded-[2rem] border-neo-cyan/20 p-10 overflow-hidden shadow-2xl">
+          <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-neo-cyan/10 rounded-2xl border border-neo-cyan/30 flex items-center justify-center mx-auto mb-6 relative group">
+              <ScanLine className="w-10 h-10 text-neo-cyan absolute opacity-50 animate-ping" />
+              <Lock className="w-8 h-8 text-neo-cyan relative z-10" />
+              
+              {/* Corner Accents */}
+              <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-neo-cyan"></div>
+              <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-neo-cyan"></div>
+              <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-neo-cyan"></div>
+              <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-neo-cyan"></div>
             </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-              Select Your Team
-            </label>
-            <select
-              value={teamId}
-              onChange={(e) => setTeamId(e.target.value)}
-              onFocus={loadTeams}
-              required
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="">-- Select Team --</option>
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.team_name} ({team.school_name})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter team password"
-                required
-                className="w-full px-4 py-2 pr-10 rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Default password: NRPC2026Teams
+            
+            <h1 className="text-2xl font-heading font-black text-white uppercase tracking-tight">
+              Operator <span className="text-neo-cyan neo-text-glow">Access</span>
+            </h1>
+            <p className="text-[10px] font-mono text-neo-cyan/60 uppercase tracking-[0.3em] mt-2">
+              Secure Terminal // NRPC-2026
             </p>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <>
-                <Lock className="w-5 h-5" />
-                Login
-              </>
-            )}
-          </button>
-        </form>
-      </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-4">
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neo-slate/40 group-focus-within:text-neo-cyan transition-colors z-10" />
+                {fetchingTeams ? (
+                  <div className="w-full bg-neo-void/50 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-neo-slate/40 font-mono text-sm flex items-center gap-2">
+                    <Activity className="w-3 h-3 animate-spin" /> Fetching Teams...
+                  </div>
+                ) : (
+                  <select
+                    value={teamId}
+                    onChange={(e) => setTeamId(e.target.value)}
+                    className="w-full bg-neo-void/50 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white font-mono text-sm focus:border-neo-cyan/50 focus:ring-1 focus:ring-neo-cyan/20 outline-none transition-all appearance-none"
+                    required
+                  >
+                    <option value="" className="bg-neo-void text-neo-slate/40">-- SELECT TEAM --</option>
+                    {primaryTeams.length > 0 && (
+                      <optgroup label="PRIMARY SCHOOL" className="bg-neo-void text-neo-cyan font-bold uppercase tracking-widest text-[10px]">
+                        {primaryTeams.map(t => (
+                          <option key={t.id} value={t.id} className="bg-neo-void text-white font-mono text-sm uppercase">
+                            {t.team_name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {secondaryTeams.length > 0 && (
+                      <optgroup label="SECONDARY SCHOOL" className="bg-neo-void text-neo-cyan font-bold uppercase tracking-widest text-[10px]">
+                        {secondaryTeams.map(t => (
+                          <option key={t.id} value={t.id} className="bg-neo-void text-white font-mono text-sm uppercase">
+                            {t.team_name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                )}
+              </div>
 
-      <div className="mt-6 text-center text-sm text-gray-500">
-        <p>Don't see your team? Contact an administrator.</p>
+              <div className="relative group">
+                <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neo-slate/40 group-focus-within:text-neo-cyan transition-colors" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Access Key"
+                  className="w-full bg-neo-void/50 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white font-mono placeholder:text-neo-slate/20 focus:border-neo-cyan/50 focus:ring-1 focus:ring-neo-cyan/20 outline-none transition-all"
+                  required
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-neo-amber/10 border border-neo-amber/30 text-neo-amber text-xs font-mono text-center uppercase tracking-wider flex items-center justify-center gap-2">
+                <ShieldCheck className="w-4 h-4" /> {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || fetchingTeams}
+              className="w-full btn-neo py-4 text-sm uppercase tracking-[0.2em] relative overflow-hidden group disabled:opacity-30"
+            >
+              <div className="relative z-10 flex items-center justify-center gap-2">
+                {loading ? 'Verifying...' : 'Authenticate'}
+              </div>
+              <div className="absolute inset-0 bg-neo-cyan/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+            </button>
+          </form>
+          
+          <div className="mt-8 text-center border-t border-white/5 pt-6">
+             <p className="text-[10px] font-mono text-neo-slate/20 uppercase tracking-widest">
+               Unauthorized access attempts are logged // NRPC Security
+             </p>
+          </div>
+        </div>
       </div>
     </div>
   );

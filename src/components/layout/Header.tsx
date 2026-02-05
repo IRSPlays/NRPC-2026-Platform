@@ -1,5 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { Calculator, Trophy, Upload, Shield, Moon, Sun, LogOut, User } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Calculator, Trophy, Upload, Shield, Moon, Sun, LogOut, User, Cpu } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -7,43 +7,61 @@ export default function Header() {
   const { theme, toggleTheme } = useTheme();
   const { isAdmin, isJudge, isTeam, teamName, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     await logout();
     navigate('/');
   };
 
+  const isActive = (path: string) => location.pathname === path;
+
   return (
-    <header className="sticky top-0 z-50 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border-b border-gray-200 dark:border-dark-border">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-light rounded-lg flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-white" />
+    <header className="sticky top-0 z-50 py-4">
+      <div className="container mx-auto px-4">
+        <div className="neo-glass rounded-2xl border-neo-cyan/20 px-6 py-4 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-4 group">
+            <div className="w-10 h-10 bg-neo-cyan/10 border border-neo-cyan/30 rounded-xl flex items-center justify-center group-hover:bg-neo-cyan/20 transition-all">
+              <Cpu className="w-6 h-6 text-neo-cyan neo-text-glow" />
             </div>
-            <div>
-              <h1 className="font-heading font-bold text-xl text-gray-900 dark:text-white">
-                NRPC Platform
+            <div className="hidden sm:block">
+              <h1 className="font-heading font-black text-xl text-white tracking-tight uppercase leading-none">
+                NRPC<span className="text-neo-cyan">.Core</span>
               </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                De-extinction Challenge 2026
+              <p className="text-[10px] font-mono text-neo-cyan/60 uppercase tracking-widest mt-1">
+                De-Extinction v2.0
               </p>
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6">
-            <Link to="/calculator" className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary-light transition-colors">
+          <nav className="hidden md:flex items-center gap-8">
+            <Link 
+              to="/calculator" 
+              className={`flex items-center gap-2 text-sm font-mono uppercase tracking-widest transition-all ${
+                isActive('/calculator') ? 'text-neo-cyan neo-text-glow' : 'text-neo-slate/60 hover:text-neo-cyan'
+              }`}
+            >
               <Calculator className="w-4 h-4" />
               <span>Calculator</span>
             </Link>
-            
+
             {isTeam && (
               <>
-                <Link to="/team-dashboard" className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary-light transition-colors">
-                  <User className="w-4 h-4" />
-                  <span>{teamName || 'Dashboard'}</span>
+                <Link 
+                  to="/team-dashboard" 
+                  className={`flex items-center gap-2 text-sm font-mono uppercase tracking-widest transition-all ${
+                    isActive('/team-dashboard') ? 'text-neo-cyan neo-text-glow' : 'text-neo-slate/60 hover:text-neo-cyan'
+                  }`}
+                >
+                  <Trophy className="w-4 h-4" />
+                  <span>Dashboard</span>
                 </Link>
-                <Link to="/submit" className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary-light transition-colors">
+                <Link 
+                  to="/submit" 
+                  className={`flex items-center gap-2 text-sm font-mono uppercase tracking-widest transition-all ${
+                    isActive('/submit') ? 'text-neo-cyan neo-text-glow' : 'text-neo-slate/60 hover:text-neo-cyan'
+                  }`}
+                >
                   <Upload className="w-4 h-4" />
                   <span>Submit</span>
                 </Link>
@@ -51,14 +69,24 @@ export default function Header() {
             )}
 
             {!isTeam && (
-              <Link to="/team-login" className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary-light transition-colors">
+              <Link 
+                to="/team-login" 
+                className={`flex items-center gap-2 text-sm font-mono uppercase tracking-widest transition-all ${
+                  isActive('/team-login') ? 'text-neo-cyan neo-text-glow' : 'text-neo-slate/60 hover:text-neo-cyan'
+                }`}
+              >
                 <User className="w-4 h-4" />
                 <span>Team Login</span>
               </Link>
             )}
 
             {(isAdmin || isJudge) && (
-              <Link to="/admin" className="flex items-center gap-2 text-primary dark:text-primary-light font-medium">
+              <Link 
+                to="/admin" 
+                className={`flex items-center gap-2 text-sm font-mono uppercase tracking-widest transition-all ${
+                  location.pathname.startsWith('/admin') ? 'text-neo-amber neo-text-glow' : 'text-neo-amber/60 hover:text-neo-amber'
+                }`}
+              >
                 <Shield className="w-4 h-4" />
                 <span>Admin</span>
               </Link>
@@ -68,23 +96,23 @@ export default function Header() {
           <div className="flex items-center gap-4">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-dark-border hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              className="p-2.5 rounded-xl bg-neo-surface/40 border border-neo-cyan/10 text-neo-cyan/60 hover:text-neo-cyan hover:border-neo-cyan/40 transition-all"
               aria-label="Toggle theme"
             >
               {theme === 'light' ? (
-                <Moon className="w-5 h-5 text-gray-600" />
+                <Moon className="w-5 h-5" />
               ) : (
-                <Sun className="w-5 h-5 text-yellow-400" />
+                <Sun className="w-5 h-5" />
               )}
             </button>
 
             {(isAdmin || isJudge || isTeam) && (
               <button
                 onClick={handleLogout}
-                className="p-2 rounded-lg bg-gray-100 dark:bg-dark-border hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                className="p-2.5 rounded-xl bg-neo-surface/40 border border-neo-amber/10 text-neo-amber/60 hover:text-neo-amber hover:border-neo-amber/40 transition-all"
                 aria-label="Logout"
               >
-                <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                <LogOut className="w-5 h-5" />
               </button>
             )}
           </div>

@@ -111,3 +111,14 @@ export interface BackupFile {
   size: number;
   created: string;
 }
+
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  priority: 'low' | 'medium' | 'high';
+  is_pinned: number;
+  is_active?: number;
+  created_at: string;
+  expires_at?: string;
+}

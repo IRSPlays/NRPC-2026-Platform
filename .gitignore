@@ -1,1 +1,8 @@
 node_modules
+dist
+backups
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+.env
+.DS_Store

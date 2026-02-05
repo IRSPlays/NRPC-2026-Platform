@@ -1,465 +1,240 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FileText, Search, CheckCircle2, Clock, Eye, ExternalLink, Star, AlertCircle, X } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { submissionsAPI, teamsAPI, getFileUrl } from '../../lib/api';
+import { useState, useEffect } from 'react';
+import { FileText, CheckCircle2, Clock, Eye, ExternalLink, AlertTriangle, Save, User, Activity, ArrowLeft } from 'lucide-react';
+import { submissionsAPI, getFileUrl } from '../../lib/api';
 import { Submission } from '../../types';
 
 export default function SubmissionReview() {
-  const { isAdmin, isJudge } = useAuth();
-  const navigate = useNavigate();
-  
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'scored'>('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
-  
-  // Scoring form
+  const [success, setSuccess] = useState('');
+  const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
+
+  // Scoring form state
   const [scores, setScores] = useState({
     concept_score: 0,
     future_score: 0,
     organization_score: 0,
     aesthetics_score: 0,
+    assessed_by: ''
   });
-  const [judgeName, setJudgeName] = useState('');
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin && !isJudge) {
-      navigate('/admin');
-      return;
-    }
-    loadData();
-  }, [isAdmin, isJudge]);
+    loadSubmissions();
+  }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadSubmissions = async () => {
     try {
-      const [subsData, teamsData] = await Promise.all([
-        submissionsAPI.getAll(),
-        teamsAPI.getAll(),
-      ]);
-      
-      // Enrich submissions with team info
-      const enrichedSubs = subsData.map(sub => {
-        const team = teamsData.find(t => t.id === sub.team_id);
-        return {
-          ...sub,
-          team_name: team?.team_name,
-          school_name: team?.school_name,
-        };
-      });
-      
-      setSubmissions(enrichedSubs);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load submissions');
+      setLoading(true);
+      const data = await submissionsAPI.getAll();
+      setSubmissions(data);
+    } catch (err) {
+      setError('Failed to fetch submissions');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleScoreSubmit = async () => {
-    if (!selectedSubmission) return;
-    if (!judgeName.trim()) {
-      setError('Please enter your name');
-      return;
-    }
-
-    setSaving(true);
-    setError('');
-
-    try {
-      await submissionsAPI.score(selectedSubmission.id, {
-        concept_score: scores.concept_score,
-        future_score: scores.future_score,
-        organization_score: scores.organization_score,
-        aesthetics_score: scores.aesthetics_score,
-        assessed_by: judgeName,
-      });
-
-      setSelectedSubmission(null);
-      setScores({ concept_score: 0, future_score: 0, organization_score: 0, aesthetics_score: 0 });
-      setJudgeName('');
-      loadData();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save scores');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const filteredSubmissions = submissions.filter(sub => {
-    const matchesFilter = 
-      filter === 'all' ? true :
-      filter === 'pending' ? !sub.concept_score :
-      filter === 'scored' ? !!sub.concept_score :
-      true;
-    
-    const matchesSearch = 
-      (sub.team_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-      (sub.school_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-      sub.original_filename.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesFilter && matchesSearch;
-  });
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-SG', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+  const handleSelect = (sub: Submission) => {
+    setSelectedSub(sub);
+    setScores({
+      concept_score: sub.concept_score || 0,
+      future_score: sub.future_score || 0,
+      organization_score: sub.organization_score || 0,
+      aesthetics_score: sub.aesthetics_score || 0,
+      assessed_by: sub.assessed_by || ''
     });
+    setError('');
+    setSuccess('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const getTotalScore = (sub: Submission) => {
-    if (!sub.concept_score) return null;
-    return (sub.concept_score || 0) + (sub.future_score || 0) + (sub.organization_score || 0) + (sub.aesthetics_score || 0);
+  const handleSubmitScore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSub) return;
+    setError('');
+    setSuccess('');
+    try {
+      await submissionsAPI.score(selectedSub.id, scores);
+      setSuccess('Analysis package finalized!');
+      loadSubmissions();
+      // Keep selected to show success
+    } catch (err) {
+      setError('Analysis failed to save');
+    }
   };
 
-  if (!isAdmin && !isJudge) {
-    return null;
+  const totalScore = scores.concept_score + scores.future_score + scores.organization_score + scores.aesthetics_score;
+
+  if (selectedSub) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center gap-4">
+          <button onClick={() => setSelectedSub(null)} className="p-3 bg-white/5 rounded-2xl hover:bg-neo-cyan/10 hover:text-neo-cyan transition-all">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-3xl font-heading font-black text-white uppercase tracking-tighter">Analysis <span className="text-neo-cyan">Terminal</span></h1>
+            <p className="text-xs font-mono text-neo-slate/40 uppercase tracking-widest">{selectedSub.team_name} // {selectedSub.original_filename}</p>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* File Viewer Card */}
+          <div className="neo-glass rounded-[2rem] border-white/5 p-8 space-y-6">
+            <div className="aspect-video bg-neo-void rounded-2xl border border-white/5 flex flex-col items-center justify-center gap-4 group relative overflow-hidden">
+               <div className="scanning-line absolute w-full top-0 left-0 opacity-10"></div>
+               <FileText className="w-16 h-16 text-neo-cyan/20 group-hover:text-neo-cyan/40 transition-all" />
+               <div className="text-center space-y-4">
+                  <p className="text-xs font-mono text-neo-slate/40 uppercase">External Storage Link</p>
+                  {selectedSub.submission_type === 'link' ? (
+                    <a href={selectedSub.external_link} target="_blank" rel="noopener noreferrer" className="btn-neo py-3 px-8 flex items-center gap-2">
+                      <ExternalLink className="w-4 h-4" /> Open Source
+                    </a>
+                  ) : (
+                    <a href={getFileUrl(selectedSub.file_path)} target="_blank" rel="noopener noreferrer" className="btn-neo py-3 px-8 flex items-center gap-2">
+                      <Eye className="w-4 h-4" /> Open Artifact
+                    </a>
+                  )}
+               </div>
+            </div>
+            
+            <div className="p-6 bg-white/5 rounded-2xl border border-white/5 space-y-2">
+              <div className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest">Metadata</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-[10px] text-neo-slate/30 uppercase">Submitted</div>
+                  <div className="text-sm font-mono text-white">{new Date(selectedSub.submitted_at).toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-neo-slate/30 uppercase">Category</div>
+                  <div className="text-sm font-mono text-neo-cyan">{selectedSub.original_filename.includes('Primary') ? 'Primary' : 'Secondary'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Scoring Form */}
+          <div className="neo-glass rounded-[2rem] border-white/5 p-8 relative">
+            <form onSubmit={handleSubmitScore} className="space-y-8">
+              <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                 <div className="text-xs font-mono font-bold text-white uppercase tracking-widest">Grading Matrix</div>
+                 <div className="text-4xl font-black font-mono text-neo-cyan">{totalScore.toString().padStart(2, '0')}<span className="text-sm text-neo-slate/30 font-normal ml-1">/ 100</span></div>
+              </div>
+
+              {success && <div className="p-4 rounded-xl bg-neo-cyan/10 border border-neo-cyan/30 text-neo-cyan text-xs font-mono uppercase tracking-widest flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> {success}</div>}
+              {error && <div className="p-4 rounded-xl bg-neo-amber/10 border border-neo-amber/30 text-neo-amber text-xs font-mono uppercase tracking-widest flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> {error}</div>}
+
+              <div className="grid gap-6">
+                {[
+                  { label: 'Core Concept (40)', key: 'concept_score', max: 40 },
+                  { label: 'Future Innovation (30)', key: 'future_score', max: 30 },
+                  { label: 'Logic/Organization (20)', key: 'organization_score', max: 20 },
+                  { label: 'Visual Aesthetic (10)', key: 'aesthetics_score', max: 10 },
+                ].map(item => (
+                  <div key={item.key} className="space-y-2">
+                    <div className="flex justify-between items-center px-4">
+                      <label className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest">{item.label}</label>
+                      <span className="text-sm font-mono font-bold text-neo-cyan">{(scores as any)[item.key]}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max={item.max}
+                      value={(scores as any)[item.key]}
+                      onChange={e => setScores({ ...scores, [item.key]: parseInt(e.target.value) })}
+                      className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-neo-cyan"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest ml-4">Assessing Officer</label>
+                <div className="relative">
+                  <User className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-neo-slate/40" />
+                  <input
+                    required
+                    type="text"
+                    value={scores.assessed_by}
+                    onChange={e => setScores({ ...scores, assessed_by: e.target.value })}
+                    className="w-full bg-neo-void/50 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-white font-mono text-sm focus:border-neo-cyan/40 outline-none"
+                    placeholder="Enter name..."
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="w-full btn-neo py-4 flex items-center justify-center gap-3">
+                <Save className="w-4 h-4" /> Finalize Analysis
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold font-heading text-slate-900 dark:text-white flex items-center gap-3">
-            <FileText className="w-8 h-8 text-[#0D7377]" />
-            Submission Review
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Review and score poster submissions
-          </p>
-        </div>
-        <div className="text-sm text-slate-500 dark:text-slate-400">
-          {submissions.filter(s => !s.concept_score).length} pending
-        </div>
+    <div className="space-y-8">
+      <div className="border-b border-white/5 pb-6">
+        <h1 className="text-3xl font-heading font-black text-white uppercase tracking-tighter">
+          Uplink <span className="text-neo-cyan">Review</span>
+        </h1>
+        <p className="text-xs font-mono text-neo-slate/40 uppercase tracking-[0.2em] mt-1">Incoming Project Analysis Logs</p>
       </div>
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-            <AlertCircle className="w-5 h-5" />
-            <span>{error}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search teams, schools, or filenames..."
-            className="w-full pl-12 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-[#0D7377] focus:border-transparent"
-          />
-        </div>
-        <div className="flex gap-2">
-          {(['all', 'pending', 'scored'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                filter === f
-                  ? 'bg-[#0D7377] text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Submissions Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-[#0D7377] border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : filteredSubmissions.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileText className="w-8 h-8 text-slate-400" />
-          </div>
-          <p className="text-slate-500 dark:text-slate-400">
-            {searchTerm || filter !== 'all' ? 'No submissions match your criteria' : 'No submissions yet'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {filteredSubmissions.map((sub) => {
-            const totalScore = getTotalScore(sub);
-            const isScored = !!sub.concept_score;
-            
-            return (
-              <div
-                key={sub.id}
-                className={`bg-white dark:bg-slate-800 rounded-xl border transition-all overflow-hidden ${
-                  isScored 
-                    ? 'border-green-200 dark:border-green-800' 
-                    : 'border-slate-200 dark:border-slate-700'
-                }`}
-              >
-                <div className="p-6">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-slate-900 dark:text-white">
-                          {sub.team_name}
-                        </h3>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          isScored
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                        }`}>
-                          {isScored ? (
-                            <span className="flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" />
-                              Scored
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              Pending
-                            </span>
-                          )}
+      <div className="neo-glass rounded-3xl border-white/5 overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center py-20"><Activity className="animate-spin text-neo-cyan" /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-white/5 border-b border-white/5">
+                  <th className="px-8 py-4 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Package ID</th>
+                  <th className="px-8 py-4 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Source Unit</th>
+                  <th className="px-8 py-4 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Protocol State</th>
+                  <th className="px-8 py-4 text-center text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Score</th>
+                  <th className="px-8 py-4 text-right text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {submissions.map(sub => (
+                  <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors group">
+                    <td className="px-8 py-6 font-mono text-xs text-neo-cyan/60">#UP-{sub.id}</td>
+                    <td className="px-8 py-6">
+                      <div className="text-sm font-bold text-white group-hover:text-neo-cyan transition-colors">{sub.team_name}</div>
+                      <div className="text-[10px] font-mono text-neo-slate/40 uppercase truncate max-w-[200px]">{sub.original_filename}</div>
+                    </td>
+                    <td className="px-8 py-6">
+                      {sub.concept_score ? (
+                        <span className="flex items-center gap-2 text-[10px] font-mono text-neo-cyan uppercase">
+                          <CheckCircle2 className="w-3 h-3" /> Analysis Complete
                         </span>
-                      </div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {sub.school_name} • {formatDate(sub.submitted_at)}
-                      </p>
-                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 font-mono">
-                        {sub.original_filename}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      {isScored && (
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-[#0D7377]">
-                            {totalScore}
-                          </div>
-                          <div className="text-xs text-slate-400">/ 100</div>
-                        </div>
+                      ) : (
+                        <span className="flex items-center gap-2 text-[10px] font-mono text-neo-amber uppercase animate-pulse">
+                          <Clock className="w-3 h-3" /> Awaiting Analysis
+                        </span>
                       )}
-                      
-                      <div className="flex gap-2">
-                        {sub.submission_type === 'link' ? (
-                          <a
-                            href={sub.external_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                            title="Open Link"
-                          >
-                            <ExternalLink className="w-5 h-5 text-slate-500" />
-                          </a>
-                        ) : (
-                          <a
-                            href={getFileUrl(sub.file_path)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                            title="View File"
-                          >
-                            <Eye className="w-5 h-5 text-slate-500" />
-                          </a>
-                        )}
-                        
-                        {!isScored && (
-                          <button
-                            onClick={() => {
-                              setSelectedSubmission(sub);
-                              setScores({ concept_score: 0, future_score: 0, organization_score: 0, aesthetics_score: 0 });
-                            }}
-                            className="px-4 py-2 bg-[#0D7377] text-white rounded-lg text-sm font-medium hover:bg-[#0A5A5D] transition-colors"
-                          >
-                            Score
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Score Details */}
-                  {isScored && (
-                    <div className="mt-4 grid grid-cols-4 gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                      <div className="text-center">
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Concept</div>
-                        <div className="font-semibold text-slate-900 dark:text-white">{sub.concept_score}/40</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Future</div>
-                        <div className="font-semibold text-slate-900 dark:text-white">{sub.future_score}/30</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Org</div>
-                        <div className="font-semibold text-slate-900 dark:text-white">{sub.organization_score}/20</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Design</div>
-                        <div className="font-semibold text-slate-900 dark:text-white">{sub.aesthetics_score}/10</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Scoring Modal */}
-      {selectedSubmission && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  Score Submission
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {selectedSubmission.team_name} • {selectedSubmission.school_name}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedSubmission(null)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
-              >
-                <X className="w-5 h-5 text-slate-500" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Judge Name */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Your Name
-                </label>
-                <input
-                  type="text"
-                  value={judgeName}
-                  onChange={(e) => setJudgeName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-[#0D7377] focus:border-transparent"
-                />
-              </div>
-
-              {/* Scoring Categories */}
-              <div className="space-y-4">
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="font-medium text-slate-900 dark:text-white">
-                      Current Technology Concepts
-                    </label>
-                    <span className="text-sm text-slate-500">/ 40</span>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    max="40"
-                    value={scores.concept_score}
-                    onChange={(e) => setScores({ ...scores, concept_score: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-[#0D7377] focus:border-transparent"
-                  />
-                </div>
-
-                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="font-medium text-slate-900 dark:text-white">
-                      Future Innovations
-                    </label>
-                    <span className="text-sm text-slate-500">/ 30</span>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    max="30"
-                    value={scores.future_score}
-                    onChange={(e) => setScores({ ...scores, future_score: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-[#0D7377] focus:border-transparent"
-                  />
-                </div>
-
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="font-medium text-slate-900 dark:text-white">
-                      Organization & Clarity
-                    </label>
-                    <span className="text-sm text-slate-500">/ 20</span>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    max="20"
-                    value={scores.organization_score}
-                    onChange={(e) => setScores({ ...scores, organization_score: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-[#0D7377] focus:border-transparent"
-                  />
-                </div>
-
-                <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="font-medium text-slate-900 dark:text-white">
-                      Aesthetic Design
-                    </label>
-                    <span className="text-sm text-slate-500">/ 10</span>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={scores.aesthetics_score}
-                    onChange={(e) => setScores({ ...scores, aesthetics_score: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-[#0D7377] focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              {/* Total */}
-              <div className="bg-slate-100 dark:bg-slate-700/50 rounded-lg p-4 flex items-center justify-between">
-                <span className="font-semibold text-slate-900 dark:text-white">Total Score</span>
-                <span className="text-2xl font-bold text-[#0D7377]">
-                  {scores.concept_score + scores.future_score + scores.organization_score + scores.aesthetics_score}
-                  <span className="text-sm font-normal text-slate-400 ml-1">/ 100</span>
-                </span>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setSelectedSubmission(null)}
-                  className="flex-1 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleScoreSubmit}
-                  disabled={saving}
-                  className="flex-1 py-3 bg-[#0D7377] text-white rounded-lg font-medium hover:bg-[#0A5A5D] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {saving ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Star className="w-5 h-5" />
-                      Save Score
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+                    </td>
+                    <td className="px-8 py-6 text-center font-mono font-bold text-white">
+                      {sub.concept_score ? (sub.concept_score + sub.future_score! + sub.organization_score! + sub.aesthetics_score!) : '--'}
+                    </td>
+                    <td className="px-8 py-6 text-right">
+                      <button 
+                        onClick={() => handleSelect(sub)}
+                        className={`btn-neo py-2 px-4 text-[10px] ${sub.concept_score ? 'opacity-50 hover:opacity-100' : 'neo-text-glow border-neo-cyan shadow-[0_0_10px_rgba(102,252,241,0.2)]'}`}
+                      >
+                        {sub.concept_score ? 'Re-Evaluate' : 'Analyze Package'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -1,25 +1,13 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Eye, EyeOff, Lock, UserCog, Scale } from 'lucide-react';
+import { useState } from 'react';
+import { Lock, Shield, ChevronRight, Fingerprint, Database } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function AdminLogin() {
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<'admin' | 'judge'>('admin');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { loginAsAdmin, loginAsJudge, isAdmin, isJudge } = useAuth();
-
-  useEffect(() => {
-    if (isAdmin || isJudge) {
-      const from = location.state?.from?.pathname || '/admin/dashboard';
-      navigate(from, { replace: true });
-    }
-  }, [isAdmin, isJudge, navigate, location]);
+  const { loginAsAdmin, loginAsJudge } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,117 +20,98 @@ export default function AdminLogin() {
       } else {
         await loginAsJudge(password);
       }
-      
-      // Redirect to dashboard after successful login
-      const from = location.state?.from?.pathname || '/admin/dashboard';
-      navigate(from, { replace: true });
-    } catch (err: any) {
-      setError(err.message || 'Invalid password');
+    } catch (err) {
+      setError('Authorization Failed: Restricted Access');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto py-12">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 p-6">
-          <div className="flex items-center justify-center">
-            <Shield className="w-12 h-12 text-[#14FFEC]" />
+    <div className="min-h-screen flex items-center justify-center -mt-20">
+      <div className="w-full max-w-lg">
+        <div className="neo-glass rounded-3xl border-neo-amber/20 p-12 relative overflow-hidden">
+          {/* Background decorative scanning grid */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,179,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,179,0,0.03)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-8 pb-8 border-b border-neo-amber/10">
+              <div className="p-3 bg-neo-amber/10 rounded-xl border border-neo-amber/30">
+                <Shield className="w-8 h-8 text-neo-amber" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-heading font-black text-white uppercase tracking-tight">
+                  Command <span className="text-neo-amber neo-text-glow">Override</span>
+                </h1>
+                <p className="text-[10px] font-mono text-neo-amber/60 uppercase tracking-[0.3em]">
+                  Restricted Environment
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Role Toggle */}
+              <div className="flex p-1 bg-neo-void/50 rounded-xl border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setRole('admin')}
+                  className={`flex-1 py-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                    role === 'admin' 
+                      ? 'bg-neo-amber text-neo-void shadow-[0_0_15px_rgba(255,179,0,0.4)]' 
+                      : 'text-neo-slate/40 hover:text-neo-slate'
+                  }`}
+                >
+                  <Database className="w-3 h-3" /> SysAdmin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('judge')}
+                  className={`flex-1 py-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                    role === 'judge' 
+                      ? 'bg-neo-cyan text-neo-void shadow-[0_0_15px_rgba(102,252,241,0.4)]' 
+                      : 'text-neo-slate/40 hover:text-neo-slate'
+                  }`}
+                >
+                  <Fingerprint className="w-3 h-3" /> Assessor
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest ml-1">
+                  Security Token
+                </label>
+                <div className="relative group">
+                  <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${role === 'admin' ? 'text-neo-amber/40 group-focus-within:text-neo-amber' : 'text-neo-cyan/40 group-focus-within:text-neo-cyan'}`} />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`w-full bg-neo-void/80 border rounded-xl py-4 pl-12 pr-12 text-white font-mono placeholder:text-neo-slate/10 outline-none transition-all ${
+                      role === 'admin'
+                        ? 'border-neo-amber/20 focus:border-neo-amber/50 focus:ring-1 focus:ring-neo-amber/20'
+                        : 'border-neo-cyan/20 focus:border-neo-cyan/50 focus:ring-1 focus:ring-neo-cyan/20'
+                    }`}
+                    placeholder="••••••••••••"
+                  />
+                  <button 
+                    type="submit"
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors ${
+                      role === 'admin' ? 'bg-neo-amber text-neo-void hover:bg-white' : 'bg-neo-cyan text-neo-void hover:bg-white'
+                    }`}
+                  >
+                    {loading ? <div className="w-4 h-4 border-2 border-neo-void/30 border-t-neo-void rounded-full animate-spin" /> : <ChevronRight className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-mono text-center uppercase tracking-wider">
+                  ⚠️ {error}
+                </div>
+              )}
+            </form>
           </div>
-          <h1 className="text-2xl font-bold font-heading text-white text-center mt-4">
-            Admin Access
-          </h1>
-          <p className="text-slate-400 text-center text-sm mt-1">
-            Login as administrator or judge
-          </p>
         </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-              <p className="text-red-600 dark:text-red-400 text-sm text-center">{error}</p>
-            </div>
-          )}
-
-          {/* Role Selection */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setRole('admin')}
-              className={`p-4 rounded-lg border-2 text-center transition-all ${
-                role === 'admin'
-                  ? 'border-[#0D7377] bg-[#0D7377]/10 text-[#0D7377]'
-                  : 'border-slate-200 dark:border-slate-700 hover:border-[#0D7377]/30'
-              }`}
-            >
-              <UserCog className="w-6 h-6 mx-auto mb-2" />
-              <span className="text-sm font-medium block">Administrator</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">Full access</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('judge')}
-              className={`p-4 rounded-lg border-2 text-center transition-all ${
-                role === 'judge'
-                  ? 'border-[#0D7377] bg-[#0D7377]/10 text-[#0D7377]'
-                  : 'border-slate-200 dark:border-slate-700 hover:border-[#0D7377]/30'
-              }`}
-            >
-              <Scale className="w-6 h-6 mx-auto mb-2" />
-              <span className="text-sm font-medium block">Judge</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">Scoring only</span>
-            </button>
-          </div>
-
-          {/* Password Input */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                required
-                className="w-full px-4 py-3 pr-12 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-[#0D7377] focus:border-transparent"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-            <p className="text-xs text-slate-500 mt-2">
-              {role === 'admin' 
-                ? 'Default: NRPCTeam2026' 
-                : 'Default: NRPC2026Teams'}
-            </p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || !password}
-            className="w-full py-3 bg-[#0D7377] text-white rounded-lg font-medium hover:bg-[#0A5A5D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <>
-                <Lock className="w-5 h-5" />
-                Login
-              </>
-            )}
-          </button>
-        </form>
-      </div>
-
-      <div className="mt-6 text-center text-sm text-slate-500">
-        <p>Need access? Contact the competition organizer.</p>
       </div>
     </div>
   );

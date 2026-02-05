@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Trophy, Clock, AlertCircle } from 'lucide-react';
+import { Trophy, Clock, AlertCircle, Activity, Zap } from 'lucide-react';
 
 interface ScoreDisplayProps {
   totalScore: number;
@@ -17,134 +17,122 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
   const [displayScore, setDisplayScore] = useState(totalScore);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  // Animate score changes
   useEffect(() => {
     if (displayScore !== totalScore) {
       setIsAnimating(true);
-      const diff = totalScore - displayScore;
-      const steps = 10;
-      const stepValue = diff / steps;
-      let currentStep = 0;
-
-      const interval = setInterval(() => {
-        currentStep++;
-        if (currentStep >= steps) {
-          setDisplayScore(totalScore);
-          setIsAnimating(false);
-          clearInterval(interval);
-        } else {
-          setDisplayScore(prev => Math.round(prev + stepValue));
-        }
-      }, 30);
-
-      return () => clearInterval(interval);
+      const timer = setTimeout(() => {
+        setDisplayScore(totalScore);
+        setIsAnimating(false);
+      }, 300);
+      return () => clearTimeout(timer);
     }
   }, [totalScore, displayScore]);
 
   const percentage = Math.round((totalScore / maxScore) * 100);
-  const circumference = 2 * Math.PI * 120;
+  const circumference = 2 * Math.PI * 80;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700 sticky top-24">
-      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-        <Trophy className="w-5 h-5 text-[#0D7377]" />
-        Total Score
-      </h2>
+    <div className="neo-glass rounded-[2rem] p-8 border-neo-cyan/10 sticky top-24 overflow-hidden">
+      {/* Decorative Scanner Line */}
+      <div className="scanning-line absolute w-full top-0 left-0 opacity-10"></div>
 
-      {/* Circular Score Display */}
-      <div className="relative flex items-center justify-center mb-6">
-        <svg className="w-48 h-48 transform -rotate-90">
-          {/* Background circle */}
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-xs font-mono font-bold text-neo-cyan uppercase tracking-[0.3em] flex items-center gap-2">
+          <Activity className="w-4 h-4 animate-pulse" />
+          Core Sync Status
+        </h2>
+        <div className="px-2 py-0.5 rounded border border-neo-cyan/30 text-[10px] font-mono text-neo-cyan/60 animate-pulse">
+          LIVE
+        </div>
+      </div>
+
+      {/* Circular Gauge - Technical Re-skin */}
+      <div className="relative flex items-center justify-center mb-10">
+        <svg className="w-56 h-56 transform -rotate-90">
           <circle
-            cx="96"
-            cy="96"
-            r="88"
+            cx="112"
+            cy="112"
+            r="80"
             fill="none"
             stroke="currentColor"
-            strokeWidth="12"
-            className="text-slate-100 dark:text-slate-700"
+            strokeWidth="2"
+            className="text-white/5"
           />
-          {/* Progress circle */}
           <circle
-            cx="96"
-            cy="96"
-            r="88"
+            cx="112"
+            cy="112"
+            r="90"
             fill="none"
             stroke="currentColor"
-            strokeWidth="12"
+            strokeWidth="1"
+            strokeDasharray="4 8"
+            className="text-white/10"
+          />
+          <circle
+            cx="112"
+            cy="112"
+            r="80"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="8"
             strokeLinecap="round"
-            className={`text-[#0D7377] transition-all duration-500 ${isAnimating ? 'text-[#14FFEC]' : ''}`}
+            className={`text-neo-cyan transition-all duration-700 ease-out ${isAnimating ? 'opacity-50' : ''}`}
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             style={{
-              filter: 'drop-shadow(0 0 6px rgba(13, 115, 119, 0.5))',
+              filter: 'drop-shadow(0 0 8px rgba(102, 252, 241, 0.4))',
             }}
           />
         </svg>
+        
         <div className="absolute text-center">
-          <div className={`text-5xl font-bold font-['Space_Grotesk'] text-slate-900 dark:text-slate-100 transition-all duration-300 ${isAnimating ? 'scale-110 text-[#0D7377]' : ''}`}>
+          <div className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest mb-1">Combined Yield</div>
+          <div className={`text-6xl font-black font-heading text-white tracking-tighter transition-all duration-300 ${isAnimating ? 'scale-110 text-neo-cyan neo-text-glow' : ''}`}>
             {displayScore}
           </div>
-          <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            of {maxScore}
+          <div className="text-xs font-mono text-neo-cyan/60 mt-1">
+            / {maxScore} PTS
           </div>
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="mb-6">
-        <div className="flex justify-between text-sm mb-2">
-          <span className="text-slate-600 dark:text-slate-400">Completion</span>
-          <span className="font-semibold text-slate-900 dark:text-slate-100">{percentage}%</span>
-        </div>
-        <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-[#0D7377] to-[#14FFEC] rounded-full transition-all duration-500"
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Time Input */}
-      <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-          <Clock className="w-4 h-4 text-[#0D7377]" />
-          Time Taken (seconds)
-        </label>
-        <input
-          type="number"
-          min="0"
-          max="300"
-          value={timeSeconds}
-          onChange={(e) => onTimeChange(e.target.value)}
-          placeholder="180"
-          className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#0D7377] focus:border-transparent outline-none transition-all text-lg font-mono"
-        />
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1">
-          <AlertCircle className="w-3 h-3" />
-          Default: 180s (3 minutes). Time is for reference only.
-        </p>
-      </div>
-
-      {/* Score Breakdown */}
-      <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-        <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-          Quick Stats
-        </h3>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500 dark:text-slate-400">Missions Completed</span>
-            <span className="font-medium text-slate-900 dark:text-slate-100">
-              {totalScore > 0 ? Math.min(7, Math.ceil((totalScore / maxScore) * 7)) : 0} / 7
-            </span>
+      <div className="space-y-6">
+        {/* Progress Bar */}
+        <div>
+          <div className="flex justify-between text-[10px] font-mono uppercase tracking-widest mb-2 text-neo-slate/60">
+            <span>Synchronization</span>
+            <span className="text-neo-cyan">{percentage}%</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500 dark:text-slate-400">Points Remaining</span>
-            <span className="font-medium text-slate-900 dark:text-slate-100">
-              {maxScore - totalScore}
-            </span>
+          <div className="h-2 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/10">
+            <div
+              className="h-full bg-neo-cyan rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(102,252,241,0.5)]"
+              style={{ width: `${percentage}%` }}
+            />
           </div>
+        </div>
+
+        {/* Time Entry - Chronometer Style */}
+        <div className="pt-6 border-t border-white/5">
+          <label className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.2em] text-neo-slate/60 mb-3">
+            <Clock className="w-3 h-3 text-neo-amber" />
+            Mission Duration (SEC)
+          </label>
+          <div className="relative group">
+            <input
+              type="number"
+              min="0"
+              max="300"
+              value={timeSeconds}
+              onChange={(e) => onTimeChange(e.target.value)}
+              className="w-full bg-neo-void/50 border border-white/10 rounded-xl px-5 py-4 text-2xl font-mono text-neo-amber focus:border-neo-amber/50 focus:ring-1 focus:ring-neo-amber/20 outline-none transition-all placeholder:text-white/5"
+            />
+            <Zap className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-neo-amber/20 group-focus-within:text-neo-amber/50 transition-colors" />
+          </div>
+          <p className="text-[10px] font-mono text-neo-slate/30 mt-3 flex items-center gap-2 uppercase tracking-tighter">
+            <AlertCircle className="w-3 h-3" />
+            Standard Baseline: 180s // REFERENCE ONLY
+          </p>
         </div>
       </div>
     </div>

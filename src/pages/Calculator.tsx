@@ -1,627 +1,278 @@
 import React, { useState, useMemo } from 'react';
-import { Calculator, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Calculator, RotateCcw, ShieldCheck, Terminal, Settings2 } from 'lucide-react';
 import MissionCard from '../components/calculator/MissionCard';
 import ScoreDisplay from '../components/calculator/ScoreDisplay';
 
-// Mission 1: Rock Collection (30 pts max)
-// 5 rocks × 5 pts + 5 bonus if all collected
-interface Mission1State {
-  rocksCollected: number;
-}
-
-// Mission 2: Meat Transport (15 pts max)
-// 2 meat × 5 pts + 5 bonus if both launched
-interface Mission2State {
-  meatLaunched: number;
-  bothLaunched: boolean;
-}
-
-// Mission 3: Hay Bale Transport (30 pts max)
-// 3 bales × (5 pickup + 5 forest) = 30 total
-interface Mission3State {
-  bales: {
-    pickedUp: boolean;
-    inForest: boolean;
-  }[];
-}
-
-// Mission 4: Bone Sorting (20 pts max)
-// 3 bones × (2 pickup + 3 base) + 5 bonus if all in base
-interface Mission4State {
-  bones: {
-    pickedUp: boolean;
-    inBase: boolean;
-  }[];
-  allInBase: boolean;
-}
-
-// Mission 5: Researcher Path (30 pts max)
-// CRITICAL: If researcher toppled OR not all locations visited OR base not last = 0 pts
-interface Mission5State {
-  allLocationsVisited: boolean;
-  baseIsLast: boolean;
-  researcherToppled: boolean;
-}
-
-// Mission 6: Eagle Nest (15 pts max)
-// CRITICAL: If nest fell OR not on stump = 0 pts
-interface Mission6State {
-  nestOnStump: boolean;
-  nestFell: boolean;
-}
-
-// Mission 7: Robot Alignment (15 pts max)
-// Binary 0 or 15
-interface Mission7State {
-  aligned: boolean;
-}
+interface Mission1State { rocksCollected: number; }
+interface Mission2State { meatLaunched: number; bothLaunched: boolean; }
+interface Mission3State { bales: { moved: boolean; inForest: boolean; }[]; }
+interface Mission4State { fossils: { pickedUp: boolean; inBase: boolean; }[]; allInBase: boolean; }
+interface Mission5State { scientistsInBase: number; scientistFell: boolean; }
+interface Mission6State { nestOut: boolean; nestOnStump: boolean; nestFell: boolean; }
+interface Mission7State { active: boolean; }
 
 const MAX_TOTAL_SCORE = 155;
 
 const CalculatorPage: React.FC = () => {
-  // Time input
-  const [timeSeconds, setTimeSeconds] = useState('180');
+  const [timeSeconds, setTimeSeconds] = useState('150');
 
-  // Mission 1: Rock Collection
-  const [mission1, setMission1] = useState<Mission1State>({
-    rocksCollected: 0,
-  });
-
-  // Mission 2: Meat Transport
-  const [mission2, setMission2] = useState<Mission2State>({
-    meatLaunched: 0,
-    bothLaunched: false,
-  });
-
-  // Mission 3: Hay Bale Transport
+  const [mission1, setMission1] = useState<Mission1State>({ rocksCollected: 0 });
+  const [mission2, setMission2] = useState<Mission2State>({ meatLaunched: 0, bothLaunched: false });
   const [mission3, setMission3] = useState<Mission3State>({
-    bales: [
-      { pickedUp: false, inForest: false },
-      { pickedUp: false, inForest: false },
-      { pickedUp: false, inForest: false },
-    ],
+    bales: [{ moved: false, inForest: false }, { moved: false, inForest: false }, { moved: false, inForest: false }],
   });
-
-  // Mission 4: Bone Sorting
   const [mission4, setMission4] = useState<Mission4State>({
-    bones: [
-      { pickedUp: false, inBase: false },
-      { pickedUp: false, inBase: false },
-      { pickedUp: false, inBase: false },
-    ],
+    fossils: [{ pickedUp: false, inBase: false }, { pickedUp: false, inBase: false }, { pickedUp: false, inBase: false }],
     allInBase: false,
   });
+  const [mission5, setMission5] = useState<Mission5State>({ scientistsInBase: 0, scientistFell: false });
+  const [mission6, setMission6] = useState<Mission6State>({ nestOut: false, nestOnStump: false, nestFell: false });
+  const [mission7, setMission7] = useState<Mission7State>({ active: false });
 
-  // Mission 5: Researcher Path
-  const [mission5, setMission5] = useState<Mission5State>({
-    allLocationsVisited: false,
-    baseIsLast: false,
-    researcherToppled: false,
-  });
-
-  // Mission 6: Eagle Nest
-  const [mission6, setMission6] = useState<Mission6State>({
-    nestOnStump: false,
-    nestFell: false,
-  });
-
-  // Mission 7: Robot Alignment
-  const [mission7, setMission7] = useState<Mission7State>({
-    aligned: false,
-  });
-
-  // Calculate Mission 1 Score
-  const mission1Score = useMemo(() => {
-    const basePoints = mission1.rocksCollected * 5;
-    const bonus = mission1.rocksCollected === 5 ? 5 : 0;
-    return Math.min(basePoints + bonus, 30);
-  }, [mission1.rocksCollected]);
-
-  // Calculate Mission 2 Score
-  const mission2Score = useMemo(() => {
-    const basePoints = mission2.meatLaunched * 5;
-    const bonus = mission2.bothLaunched && mission2.meatLaunched === 2 ? 5 : 0;
-    return Math.min(basePoints + bonus, 15);
-  }, [mission2.meatLaunched, mission2.bothLaunched]);
-
-  // Calculate Mission 3 Score
-  const mission3Score = useMemo(() => {
-    return mission3.bales.reduce((total, bale) => {
-      const pickup = bale.pickedUp ? 5 : 0;
-      const forest = bale.inForest ? 5 : 0;
-      return total + pickup + forest;
-    }, 0);
-  }, [mission3.bales]);
-
-  // Calculate Mission 4 Score
+  const mission1Score = useMemo(() => mission1.rocksCollected * 5 + (mission1.rocksCollected === 5 ? 5 : 0), [mission1.rocksCollected]);
+  const mission2Score = useMemo(() => mission2.meatLaunched * 5 + (mission2.bothLaunched && mission2.meatLaunched === 2 ? 5 : 0), [mission2.meatLaunched, mission2.bothLaunched]);
+  const mission3Score = useMemo(() => mission3.bales.reduce((t, b) => t + (b.moved ? 5 : 0) + (b.inForest ? 5 : 0), 0), [mission3.bales]);
   const mission4Score = useMemo(() => {
-    const bonePoints = mission4.bones.reduce((total, bone) => {
-      const pickup = bone.pickedUp ? 2 : 0;
-      const base = bone.inBase ? 3 : 0;
-      return total + pickup + base;
-    }, 0);
-    const allBonesInBase = mission4.bones.every(b => b.inBase);
-    const bonus = mission4.allInBase && allBonesInBase ? 5 : 0;
-    return Math.min(bonePoints + bonus, 20);
-  }, [mission4.bones, mission4.allInBase]);
-
-  // Calculate Mission 5 Score (CRITICAL)
-  const mission5Score = useMemo(() => {
-    // Critical rule: 0 pts if researcher toppled OR not all locations visited OR base not last
-    if (mission5.researcherToppled) return 0;
-    if (!mission5.allLocationsVisited) return 0;
-    if (!mission5.baseIsLast) return 0;
-    return 30;
-  }, [mission5.researcherToppled, mission5.allLocationsVisited, mission5.baseIsLast]);
-
-  // Calculate Mission 6 Score (CRITICAL)
+    const base = mission4.fossils.reduce((t, f) => t + (f.pickedUp ? 2 : 0) + (f.inBase ? 3 : 0), 0);
+    return base + (mission4.allInBase && mission4.fossils.every(f => f.inBase) ? 5 : 0);
+  }, [mission4.fossils, mission4.allInBase]);
+  const mission5Score = useMemo(() => mission5.scientistFell ? 0 : mission5.scientistsInBase * 10, [mission5.scientistsInBase, mission5.scientistFell]);
   const mission6Score = useMemo(() => {
-    // Critical rule: 0 pts if nest fell OR not on stump
     if (mission6.nestFell) return 0;
-    if (!mission6.nestOnStump) return 0;
-    return 15;
-  }, [mission6.nestFell, mission6.nestOnStump]);
+    return (mission6.nestOut ? 5 : 0) + (mission6.nestOnStump ? 10 : 0);
+  }, [mission6.nestOut, mission6.nestOnStump, mission6.nestFell]);
+  const mission7Score = useMemo(() => (mission7.active ? 15 : 0), [mission7.active]);
 
-  // Calculate Mission 7 Score
-  const mission7Score = useMemo(() => {
-    return mission7.aligned ? 15 : 0;
-  }, [mission7.aligned]);
+  const totalScore = useMemo(() => mission1Score + mission2Score + mission3Score + mission4Score + mission5Score + mission6Score + mission7Score, [mission1Score, mission2Score, mission3Score, mission4Score, mission5Score, mission6Score, mission7Score]);
 
-  // Total Score
-  const totalScore = useMemo(() => {
-    return mission1Score + mission2Score + mission3Score + mission4Score + mission5Score + mission6Score + mission7Score;
-  }, [mission1Score, mission2Score, mission3Score, mission4Score, mission5Score, mission6Score, mission7Score]);
-
-  // Reset all missions
   const handleReset = () => {
     setMission1({ rocksCollected: 0 });
     setMission2({ meatLaunched: 0, bothLaunched: false });
-    setMission3({
-      bales: [
-        { pickedUp: false, inForest: false },
-        { pickedUp: false, inForest: false },
-        { pickedUp: false, inForest: false },
-      ],
-    });
-    setMission4({
-      bones: [
-        { pickedUp: false, inBase: false },
-        { pickedUp: false, inBase: false },
-        { pickedUp: false, inBase: false },
-      ],
-      allInBase: false,
-    });
-    setMission5({
-      allLocationsVisited: false,
-      baseIsLast: false,
-      researcherToppled: false,
-    });
-    setMission6({
-      nestOnStump: false,
-      nestFell: false,
-    });
-    setMission7({ aligned: false });
-    setTimeSeconds('180');
-  };
-
-  // Update Mission 1
-  const updateMission1Rocks = (index: number) => {
-    const newRocks = mission1.rocksCollected === index + 1 ? index : index + 1;
-    setMission1({ rocksCollected: newRocks });
-  };
-
-  // Update Mission 3 bale
-  const updateMission3Bale = (index: number, field: 'pickedUp' | 'inForest') => {
-    const newBales = [...mission3.bales];
-    newBales[index] = { ...newBales[index], [field]: !newBales[index][field] };
-    setMission3({ bales: newBales });
-  };
-
-  // Update Mission 4 bone
-  const updateMission4Bone = (index: number, field: 'pickedUp' | 'inBase') => {
-    const newBones = [...mission4.bones];
-    newBones[index] = { ...newBones[index], [field]: !newBones[index][field] };
-    setMission4({ ...mission4, bones: newBones });
+    setMission3({ bales: [{ moved: false, inForest: false }, { moved: false, inForest: false }, { moved: false, inForest: false }] });
+    setMission4({ fossils: [{ pickedUp: false, inBase: false }, { pickedUp: false, inBase: false }, { pickedUp: false, inBase: false }], allInBase: false });
+    setMission5({ scientistsInBase: 0, scientistFell: false });
+    setMission6({ nestOut: false, nestOnStump: false, nestFell: false });
+    setMission7({ active: false });
+    setTimeSeconds('150');
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 text-white py-8 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold font-['Space_Grotesk'] flex items-center gap-3">
-                <Calculator className="w-8 h-8 text-[#14FFEC]" />
-                Mission Calculator
-              </h1>
-              <p className="text-slate-400 mt-2">
-                Score calculator for NRPC competition missions
-              </p>
+    <div className="min-h-screen pb-20 space-y-12">
+      <div className="relative overflow-hidden neo-glass rounded-[2rem] border-neo-cyan/10 p-10 mb-12 mt-8">
+        <div className="scanning-line absolute w-full top-0 left-0 opacity-20"></div>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-neo-cyan/10 flex items-center justify-center border border-neo-cyan/30">
+              <Calculator className="w-8 h-8 text-neo-cyan" />
             </div>
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-sm font-medium"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Reset
-            </button>
+            <div>
+              <h1 className="text-4xl font-heading font-black text-white uppercase tracking-tighter">
+                Mission <span className="text-neo-cyan">Calculator</span>
+              </h1>
+              <div className="flex items-center gap-3 mt-1 font-mono text-xs uppercase tracking-[0.2em] text-neo-cyan/60">
+                <Terminal className="w-3 h-3" /> System Ready // NRPC-2026
+              </div>
+            </div>
           </div>
+          <button onClick={handleReset} className="flex items-center gap-3 px-6 py-3 bg-neo-surface border border-white/10 hover:border-neo-amber/50 hover:text-neo-amber text-neo-slate/60 rounded-xl transition-all font-mono text-sm font-bold uppercase tracking-widest">
+            <RotateCcw className="w-4 h-4" /> Reset
+          </button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Mission Forms */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Mission 1: Rock Collection */}
-            <MissionCard
-              number={1}
-              title="Rock Collection"
-              maxPoints={30}
-              currentPoints={mission1Score}
-              isComplete={mission1Score === 30}
-              warning={mission1.rocksCollected > 0 && mission1.rocksCollected < 5 ? "Collect all 5 rocks for 5 bonus points!" : undefined}
-            >
-              <div className="space-y-4">
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  5 rocks × 5 pts + 5 bonus if all collected
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-8 space-y-8">
+            {/* Mission 1 */}
+            <MissionCard number={1} title="Clear the way" maxPoints={30} currentPoints={mission1Score} isComplete={mission1Score === 30}>
+              <div className="space-y-6">
+                <p className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest leading-relaxed">
+                  5 rocks are blocking the stream. Drop off the rocks in the Processing Plant.
                 </p>
-                <div className="grid grid-cols-5 gap-3">
-                  {[0, 1, 2, 3, 4].map((index) => (
-                    <button
-                      key={index}
-                      onClick={() => updateMission1Rocks(index)}
-                      className={`aspect-square rounded-lg border-2 flex items-center justify-center text-lg font-bold transition-all ${
-                        index < mission1.rocksCollected
-                          ? 'border-[#0D7377] bg-[#0D7377] text-white'
-                          : 'border-slate-200 dark:border-slate-700 hover:border-[#0D7377]/50'
-                      }`}
-                    >
-                      {index < mission1.rocksCollected ? '✓' : index + 1}
-                    </button>
+                <div className="grid grid-cols-5 gap-4">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <button key={i} onClick={() => setMission1({ rocksCollected: mission1.rocksCollected === i + 1 ? i : i + 1 })}
+                      className={`aspect-square rounded-2xl border-2 flex items-center justify-center text-xl font-black font-mono transition-all ${i < mission1.rocksCollected ? 'border-neo-cyan bg-neo-cyan/20 text-neo-cyan shadow-[0_0_15px_rgba(102,252,241,0.2)]' : 'border-white/5 bg-white/[0.02] text-white/10'}`}
+                    >{i < mission1.rocksCollected ? '✓' : i + 1}</button>
                   ))}
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">Base: {mission1.rocksCollected * 5} pts</span>
-                  <span className="text-[#0D7377] font-medium">
-                    {mission1.rocksCollected === 5 ? '+5 bonus!' : 'No bonus yet'}
-                  </span>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-4 bg-neo-void/30 rounded-xl border border-white/5">
+                    <span className="text-[10px] font-mono text-neo-slate/40 uppercase">i. For each rock dropped off in Processing Plant</span>
+                    <span className="text-sm font-bold font-mono text-neo-cyan">5 PTS</span>
+                  </div>
+                  <div className={`flex justify-between items-center p-4 rounded-xl border transition-all ${mission1.rocksCollected === 5 ? 'bg-neo-cyan/10 border-neo-cyan/30 text-neo-cyan' : 'bg-neo-void/30 border-white/5 text-neo-slate/20'}`}>
+                    <span className="text-[10px] font-mono uppercase">ii. If all rocks are dropped off (EXTRA)</span>
+                    <span className="text-sm font-bold font-mono">5 PTS</span>
+                  </div>
                 </div>
               </div>
             </MissionCard>
 
-            {/* Mission 2: Meat Transport */}
-            <MissionCard
-              number={2}
-              title="Meat Transport"
-              maxPoints={15}
-              currentPoints={mission2Score}
-              isComplete={mission2Score === 15}
-            >
-              <div className="space-y-4">
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  2 meat × 5 pts + 5 bonus if both launched
+            {/* Mission 2 */}
+            <MissionCard number={2} title="Feeding time!" maxPoints={15} currentPoints={mission2Score} isComplete={mission2Score === 15}>
+              <div className="space-y-6">
+                <p className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest leading-relaxed">
+                  Launch the meat over the fence into the Tasmanian Tiger enclosure.
                 </p>
                 <div className="flex gap-4">
-                  {[0, 1, 2].map((num) => (
-                    <button
-                      key={num}
-                      onClick={() => setMission2({ ...mission2, meatLaunched: num })}
-                      className={`flex-1 py-3 px-4 rounded-lg border-2 font-medium transition-all ${
-                        mission2.meatLaunched === num
-                          ? 'border-[#0D7377] bg-[#0D7377]/10 text-[#0D7377]'
-                          : 'border-slate-200 dark:border-slate-700 hover:border-[#0D7377]/50'
-                      }`}
-                    >
-                      {num} launched
-                    </button>
+                  {[0, 1, 2].map(n => (
+                    <button key={n} onClick={() => setMission2({ ...mission2, meatLaunched: n })}
+                      className={`flex-1 py-4 px-4 rounded-2xl border-2 font-mono font-bold transition-all uppercase tracking-widest text-sm ${mission2.meatLaunched === n ? 'border-neo-cyan bg-neo-cyan/20 text-neo-cyan shadow-[0_0_15px_rgba(102,252,241,0.2)]' : 'border-white/5 bg-white/[0.02] text-white/10'}`}
+                    >{n} Meat</button>
                   ))}
                 </div>
-                <label className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={mission2.bothLaunched}
-                    onChange={(e) => setMission2({ ...mission2, bothLaunched: e.target.checked })}
-                    className="w-5 h-5 rounded border-slate-300 text-[#0D7377] focus:ring-[#0D7377]"
-                  />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Both successfully launched (+5 bonus)
-                  </span>
-                </label>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-4 bg-neo-void/30 rounded-xl border border-white/5">
+                    <span className="text-[10px] font-mono text-neo-slate/40 uppercase">i. For each piece of meat successfully launched</span>
+                    <span className="text-sm font-bold font-mono text-neo-cyan">5 PTS</span>
+                  </div>
+                  <button onClick={() => setMission2({ ...mission2, bothLaunched: !mission2.bothLaunched })}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${mission2.bothLaunched && mission2.meatLaunched === 2 ? 'bg-neo-cyan/10 border-neo-cyan/30 text-neo-cyan' : 'bg-neo-void/30 border-white/5 text-neo-slate/20'}`}
+                  >
+                    <span className="text-[10px] font-mono uppercase">ii. Both pieces successfully launched (EXTRA)</span>
+                    <span className="text-sm font-bold font-mono">5 PTS</span>
+                  </button>
+                </div>
               </div>
             </MissionCard>
 
-            {/* Mission 3: Hay Bale Transport */}
-            <MissionCard
-              number={3}
-              title="Hay Bale Transport"
-              maxPoints={30}
-              currentPoints={mission3Score}
-              isComplete={mission3Score === 30}
-            >
+            {/* Mission 3 */}
+            <MissionCard number={3} title="Store the hay bales" maxPoints={30} currentPoints={mission3Score} isComplete={mission3Score === 30}>
               <div className="space-y-4">
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  3 bales × (5 pickup + 5 forest) = 30 pts max
+                <p className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest leading-relaxed mb-4">
+                  Move 3 hay bales into the forest zone for storage.
                 </p>
-                <div className="space-y-3">
-                  {mission3.bales.map((bale, index) => (
-                    <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 w-16">
-                        Bale {index + 1}
-                      </span>
-                      <div className="flex gap-4 flex-1">
-                        <label className="flex items-center gap-2 cursor-pointer flex-1">
-                          <input
-                            type="checkbox"
-                            checked={bale.pickedUp}
-                            onChange={() => updateMission3Bale(index, 'pickedUp')}
-                            className="w-4 h-4 rounded border-slate-300 text-[#0D7377] focus:ring-[#0D7377]"
-                          />
-                          <span className="text-sm text-slate-600 dark:text-slate-400">
-                            Picked up (+5)
-                          </span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer flex-1">
-                          <input
-                            type="checkbox"
-                            checked={bale.inForest}
-                            onChange={() => updateMission3Bale(index, 'inForest')}
-                            className="w-4 h-4 rounded border-slate-300 text-[#0D7377] focus:ring-[#0D7377]"
-                          />
-                          <span className="text-sm text-slate-600 dark:text-slate-400">
-                            In forest (+5)
-                          </span>
-                        </label>
-                      </div>
-                      <div className="text-sm font-bold text-[#0D7377] w-12 text-right">
-                        {(bale.pickedUp ? 5 : 0) + (bale.inForest ? 5 : 0)}
-                      </div>
+                {mission3.bales.map((b, i) => (
+                  <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="text-[10px] font-mono font-bold text-neo-slate/40 w-12 text-center border-r border-white/5 pr-4">BALE {i+1}</div>
+                    <div className="flex gap-2 flex-1">
+                      <button onClick={() => { const n=[...mission3.bales]; n[i].moved=!n[i].moved; setMission3({bales:n}); }}
+                        className={`flex-1 py-2 rounded-xl border font-mono text-[8px] font-bold uppercase transition-all ${b.moved ? 'border-neo-cyan bg-neo-cyan/10 text-neo-cyan' : 'border-white/10 text-white/20'}`}
+                      >i. MOVED FROM START</button>
+                      <button onClick={() => { const n=[...mission3.bales]; n[i].inForest=!n[i].inForest; setMission3({bales:n}); }}
+                        className={`flex-1 py-2 rounded-xl border font-mono text-[8px] font-bold uppercase transition-all ${b.inForest ? 'border-neo-cyan bg-neo-cyan/10 text-neo-cyan' : 'border-white/10 text-white/20'}`}
+                      >ii. MOVED INTO FOREST</button>
                     </div>
-                  ))}
-                </div>
+                    <div className="text-xl font-black font-mono text-neo-cyan w-8 text-right">{(b.moved ? 5 : 0) + (b.inForest ? 5 : 0)}</div>
+                  </div>
+                ))}
               </div>
             </MissionCard>
 
-            {/* Mission 4: Bone Sorting */}
-            <MissionCard
-              number={4}
-              title="Bone Sorting"
-              maxPoints={20}
-              currentPoints={mission4Score}
-              isComplete={mission4Score === 20}
-              warning={mission4.bones.every(b => b.inBase) && !mission4.allInBase ? "Check 'All in base' for +5 bonus!" : undefined}
-            >
+            {/* Mission 4 */}
+            <MissionCard number={4} title="Collect the fossils" maxPoints={20} currentPoints={mission4Score} isComplete={mission4Score === 20}>
               <div className="space-y-4">
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  3 bones × (2 pickup + 3 base) + 5 bonus if all in base
+                <p className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest leading-relaxed mb-4">
+                  Move 3 fossils from the forest to the base.
                 </p>
-                <div className="space-y-3">
-                  {mission4.bones.map((bone, index) => (
-                    <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 w-16">
-                        Bone {index + 1}
-                      </span>
-                      <div className="flex gap-4 flex-1">
-                        <label className="flex items-center gap-2 cursor-pointer flex-1">
-                          <input
-                            type="checkbox"
-                            checked={bone.pickedUp}
-                            onChange={() => updateMission4Bone(index, 'pickedUp')}
-                            className="w-4 h-4 rounded border-slate-300 text-[#0D7377] focus:ring-[#0D7377]"
-                          />
-                          <span className="text-sm text-slate-600 dark:text-slate-400">
-                            Picked up (+2)
-                          </span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer flex-1">
-                          <input
-                            type="checkbox"
-                            checked={bone.inBase}
-                            onChange={() => updateMission4Bone(index, 'inBase')}
-                            className="w-4 h-4 rounded border-slate-300 text-[#0D7377] focus:ring-[#0D7377]"
-                          />
-                          <span className="text-sm text-slate-600 dark:text-slate-400">
-                            In base (+3)
-                          </span>
-                        </label>
-                      </div>
-                      <div className="text-sm font-bold text-[#0D7377] w-12 text-right">
-                        {(bone.pickedUp ? 2 : 0) + (bone.inBase ? 3 : 0)}
-                      </div>
+                {mission4.fossils.map((f, i) => (
+                  <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="text-[10px] font-mono font-bold text-neo-slate/40 w-12 text-center border-r border-white/5 pr-4">FOSSIL {i+1}</div>
+                    <div className="flex gap-2 flex-1">
+                      <button onClick={() => { const n=[...mission4.fossils]; n[i].pickedUp=!n[i].pickedUp; setMission4({...mission4, fossils:n}); }}
+                        className={`flex-1 py-2 rounded-xl border font-mono text-[8px] font-bold uppercase transition-all ${f.pickedUp ? 'border-neo-cyan bg-neo-cyan/10 text-neo-cyan' : 'border-white/10 text-white/20'}`}
+                      >i. PICKED UP</button>
+                      <button onClick={() => { const n=[...mission4.fossils]; n[i].inBase=!n[i].inBase; setMission4({...mission4, fossils:n}); }}
+                        className={`flex-1 py-2 rounded-xl border font-mono text-[8px] font-bold uppercase transition-all ${f.inBase ? 'border-neo-cyan bg-neo-cyan/10 text-neo-cyan' : 'border-white/10 text-white/20'}`}
+                      >ii. INSIDE BASE</button>
                     </div>
-                  ))}
-                </div>
-                <label className="flex items-center gap-3 p-3 rounded-lg bg-[#0D7377]/10 border border-[#0D7377]/20 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={mission4.allInBase}
-                    onChange={(e) => setMission4({ ...mission4, allInBase: e.target.checked })}
-                    className="w-5 h-5 rounded border-slate-300 text-[#0D7377] focus:ring-[#0D7377]"
-                  />
-                  <span className="text-sm font-medium text-[#0D7377]">
-                    All bones in base (+5 bonus)
-                  </span>
-                </label>
+                    <div className="text-xl font-black font-mono text-neo-cyan w-8 text-right">{(f.pickedUp ? 2 : 0) + (f.inBase ? 3 : 0)}</div>
+                  </div>
+                ))}
+                <button onClick={() => setMission4({ ...mission4, allInBase: !mission4.allInBase })}
+                  className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${mission4.allInBase && mission4.fossils.every(f => f.inBase) ? 'bg-neo-cyan/10 border-neo-cyan/30 text-neo-cyan' : 'bg-neo-void/30 border-white/5 text-neo-slate/20'}`}
+                >
+                  <span className="text-[10px] font-mono uppercase">iii. If all 3 fossils are fully inside base (EXTRA)</span>
+                  <span className="text-sm font-bold font-mono">5 PTS</span>
+                </button>
               </div>
             </MissionCard>
 
-            {/* Mission 5: Researcher Path - CRITICAL */}
-            <MissionCard
-              number={5}
-              title="Researcher Path"
-              maxPoints={30}
-              currentPoints={mission5Score}
-              isCritical={true}
-              isComplete={mission5Score === 30}
-              warning={mission5Score === 0 ? 
-                (mission5.researcherToppled ? "Researcher toppled - MISSION FAILED (0 pts)" :
-                 !mission5.allLocationsVisited ? "Must visit ALL locations" :
-                 !mission5.baseIsLast ? "Base must be LAST location visited" : "") 
-                : undefined}
-            >
-              <div className="space-y-4">
-                <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                  <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-red-700 dark:text-red-400">
-                    <strong>CRITICAL:</strong> If researcher toppled OR not all locations visited OR base not last = <strong>0 points</strong>
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <label className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={mission5.allLocationsVisited}
-                      onChange={(e) => setMission5({ ...mission5, allLocationsVisited: e.target.checked })}
-                      className="w-5 h-5 rounded border-slate-300 text-[#0D7377] focus:ring-[#0D7377]"
-                    />
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      All locations visited
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={mission5.baseIsLast}
-                      onChange={(e) => setMission5({ ...mission5, baseIsLast: e.target.checked })}
-                      className="w-5 h-5 rounded border-slate-300 text-[#0D7377] focus:ring-[#0D7377]"
-                    />
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      Base was last location visited
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={mission5.researcherToppled}
-                      onChange={(e) => setMission5({ ...mission5, researcherToppled: e.target.checked })}
-                      className="w-5 h-5 rounded border-red-300 text-red-600 focus:ring-red-500"
-                    />
-                    <span className="text-sm font-medium text-red-700 dark:text-red-400">
-                      Researcher toppled (FAILS MISSION)
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </MissionCard>
-
-            {/* Mission 6: Eagle Nest - CRITICAL */}
-            <MissionCard
-              number={6}
-              title="Eagle Nest"
-              maxPoints={15}
-              currentPoints={mission6Score}
-              isCritical={true}
-              isComplete={mission6Score === 15}
-              warning={mission6Score === 0 ? 
-                (mission6.nestFell ? "Nest fell - MISSION FAILED (0 pts)" :
-                 !mission6.nestOnStump ? "Nest must be on stump" : "") 
-                : undefined}
-            >
-              <div className="space-y-4">
-                <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                  <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-red-700 dark:text-red-400">
-                    <strong>CRITICAL:</strong> If nest fell OR not on stump = <strong>0 points</strong>
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <label className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={mission6.nestOnStump}
-                      onChange={(e) => setMission6({ ...mission6, nestOnStump: e.target.checked })}
-                      className="w-5 h-5 rounded border-slate-300 text-[#0D7377] focus:ring-[#0D7377]"
-                    />
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      Nest is on stump
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={mission6.nestFell}
-                      onChange={(e) => setMission6({ ...mission6, nestFell: e.target.checked })}
-                      className="w-5 h-5 rounded border-red-300 text-red-600 focus:ring-red-500"
-                    />
-                    <span className="text-sm font-medium text-red-700 dark:text-red-400">
-                      Nest fell (FAILS MISSION)
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </MissionCard>
-
-            {/* Mission 7: Robot Alignment */}
-            <MissionCard
-              number={7}
-              title="Robot Alignment"
-              maxPoints={15}
-              currentPoints={mission7Score}
-              isComplete={mission7Score === 15}
-            >
-              <div className="space-y-4">
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Binary: 0 or 15 points
+            {/* Mission 5 */}
+            <MissionCard number={5} title="Sanctuary Tour" maxPoints={30} currentPoints={mission5Score} isCritical={true} isComplete={mission5Score === 30}>
+              <div className="space-y-6">
+                <p className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest leading-relaxed">
+                  Bring the scientists back safely to the base!
                 </p>
                 <div className="flex gap-4">
-                  <button
-                    onClick={() => setMission7({ aligned: false })}
-                    className={`flex-1 py-4 px-4 rounded-lg border-2 font-medium transition-all ${
-                      !mission7.aligned
-                        ? 'border-[#0D7377] bg-[#0D7377] text-white'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-[#0D7377]/50'
-                    }`}
+                  {[0, 1, 2, 3].map(n => (
+                    <button key={n} onClick={() => setMission5({ ...mission5, scientistsInBase: n })}
+                      className={`flex-1 py-4 px-4 rounded-2xl border-2 font-mono font-bold transition-all uppercase tracking-widest text-sm ${mission5.scientistsInBase === n ? 'border-neo-cyan bg-neo-cyan/20 text-neo-cyan shadow-[0_0_15px_rgba(102,252,241,0.2)]' : 'border-white/5 bg-white/[0.02] text-white/10'}`}
+                    >{n} Units</button>
+                  ))}
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-4 bg-neo-void/30 rounded-xl border border-white/5">
+                    <span className="text-[10px] font-mono text-neo-slate/40 uppercase">i. For each scientist fully in base</span>
+                    <span className="text-sm font-bold font-mono text-neo-cyan">10 PTS</span>
+                  </div>
+                  <button onClick={() => setMission5({ ...mission5, scientistFell: !mission5.scientistFell })}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${mission5.scientistFell ? 'bg-neo-amber/10 border-neo-amber/30 text-neo-amber' : 'bg-neo-void/30 border-white/5 text-neo-slate/20'}`}
                   >
-                    Not Aligned (0 pts)
-                  </button>
-                  <button
-                    onClick={() => setMission7({ aligned: true })}
-                    className={`flex-1 py-4 px-4 rounded-lg border-2 font-medium transition-all ${
-                      mission7.aligned
-                        ? 'border-[#0D7377] bg-[#0D7377] text-white'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-[#0D7377]/50'
-                    }`}
-                  >
-                    Aligned (15 pts)
+                    <span className="text-[10px] font-mono uppercase">ii. If a scientist falls over</span>
+                    <span className="text-sm font-bold font-mono">0 PTS (TOTAL)</span>
                   </button>
                 </div>
+              </div>
+            </MissionCard>
+
+            {/* Mission 6 */}
+            <MissionCard number={6} title="Rescue" maxPoints={15} currentPoints={mission6Score} isCritical={true} isComplete={mission6Score === 15}>
+              <div className="space-y-4">
+                <p className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest leading-relaxed mb-4">
+                  Pick up the nest and place it on the tree stump!
+                </p>
+                <div className="space-y-3">
+                  <button onClick={() => setMission6({ ...mission6, nestOut: !mission6.nestOut })}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${mission6.nestOut ? 'border-neo-cyan bg-neo-cyan/10 text-neo-cyan' : 'border-white/5 text-white/10'}`}
+                  >
+                    <span className="text-[10px] font-mono uppercase">i. Nest is fully out of starting position</span>
+                    <span className="text-sm font-bold font-mono">5 PTS</span>
+                  </button>
+                  <button onClick={() => setMission6({ ...mission6, nestOnStump: !mission6.nestOnStump })}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${mission6.nestOnStump ? 'border-neo-cyan bg-neo-cyan/10 text-neo-cyan' : 'border-white/5 text-white/10'}`}
+                  >
+                    <span className="text-[10px] font-mono uppercase">ii. Nest is placed upright on tree stump</span>
+                    <span className="text-sm font-bold font-mono">10 PTS</span>
+                  </button>
+                  <button onClick={() => setMission6({ ...mission6, nestFell: !mission6.nestFell })}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${mission6.nestFell ? 'bg-neo-amber/10 border-neo-amber/30 text-neo-amber' : 'border-white/5 text-white/10'}`}
+                  >
+                    <span className="text-[10px] font-mono uppercase">iii. If the nest falls</span>
+                    <span className="text-sm font-bold font-mono">0 PTS (TOTAL)</span>
+                  </button>
+                </div>
+              </div>
+            </MissionCard>
+
+            {/* Mission 7 */}
+            <MissionCard number={7} title="Power it Up!" maxPoints={15} currentPoints={mission7Score} isComplete={mission7Score === 15}>
+              <div className="space-y-6">
+                <p className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest leading-relaxed">
+                  Activate the Wind Turbine and make the fan blades spin!
+                </p>
+                <button onClick={() => setMission7({ active: !mission7.active })}
+                  className={`w-full h-24 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 font-mono uppercase tracking-[0.2em] font-black transition-all ${mission7.active ? 'border-neo-cyan bg-neo-cyan/20 text-neo-cyan neo-text-glow' : 'border-white/5 bg-white/[0.02] text-white/10'}`}
+                >
+                  <Settings2 className={`w-6 h-6 ${mission7.active ? 'animate-spin-slow' : ''}`} />
+                  {mission7.active ? 'i. FAN BLADES MOVE' : 'READY TO TRIGGER'}
+                </button>
               </div>
             </MissionCard>
           </div>
 
-          {/* Score Display Sidebar */}
-          <div className="lg:col-span-1">
-            <ScoreDisplay
-              totalScore={totalScore}
-              maxScore={MAX_TOTAL_SCORE}
-              timeSeconds={timeSeconds}
-              onTimeChange={setTimeSeconds}
-            />
-
-            {/* Mission Summary */}
-            <div className="mt-6 bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                Mission Breakdown
-              </h3>
-              <div className="space-y-2">
-                {[
-                  { name: 'Mission 1: Rocks', score: mission1Score, max: 30 },
-                  { name: 'Mission 2: Meat', score: mission2Score, max: 15 },
-                  { name: 'Mission 3: Bales', score: mission3Score, max: 30 },
-                  { name: 'Mission 4: Bones', score: mission4Score, max: 20 },
-                  { name: 'Mission 5: Researcher', score: mission5Score, max: 30 },
-                  { name: 'Mission 6: Nest', score: mission6Score, max: 15 },
-                  { name: 'Mission 7: Alignment', score: mission7Score, max: 15 },
-                ].map((mission) => (
-                  <div key={mission.name} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-400 truncate">{mission.name}</span>
-                    <span className={`font-medium ${mission.score === mission.max ? 'text-[#0D7377]' : 'text-slate-900 dark:text-slate-100'}`}>
-                      {mission.score}/{mission.max}
-                    </span>
-                  </div>
-                ))}
+          <div className="lg:col-span-4 space-y-8">
+            <ScoreDisplay totalScore={totalScore} maxScore={MAX_TOTAL_SCORE} timeSeconds={timeSeconds} onTimeChange={setTimeSeconds} />
+            <div className="neo-glass rounded-3xl p-8 border-white/5">
+              <h3 className="text-xs font-mono font-bold text-neo-slate/40 uppercase tracking-[0.3em] mb-6 border-b border-white/5 pb-4">Tournament Registry</h3>
+              <div className="space-y-4 font-mono text-[10px]">
+                <p className="text-neo-slate/60 leading-relaxed uppercase">
+                  The maximum score possible for the NRPC Challenge is 155 points.
+                </p>
+                <p className="text-neo-amber/60 leading-relaxed uppercase border-t border-white/5 pt-4">
+                  If more than one team has the same total score, rankings are decided by mission completion time.
+                </p>
               </div>
             </div>
           </div>

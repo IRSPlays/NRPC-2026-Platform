@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Activity } from 'lucide-react';
 
 interface MissionCardProps {
   number: number;
@@ -25,98 +25,93 @@ const MissionCard: React.FC<MissionCardProps> = ({
   const progressPercentage = (currentPoints / maxPoints) * 100;
 
   return (
-    <div className={`bg-white dark:bg-slate-800 rounded-xl border-2 overflow-hidden transition-all duration-200 ${
+    <div className={`neo-glass rounded-3xl border-2 transition-all duration-300 relative overflow-hidden group ${
       isCritical && currentPoints === 0 && warning 
-        ? 'border-red-500 shadow-lg shadow-red-500/10' 
+        ? 'border-neo-amber/50 shadow-[0_0_30px_rgba(255,179,0,0.1)]' 
         : isComplete 
-          ? 'border-[#0D7377] shadow-lg shadow-[#0D7377]/10'
-          : 'border-slate-200 dark:border-slate-700 hover:border-[#0D7377]/50'
+          ? 'border-neo-cyan/40 shadow-[0_0_30px_rgba(102,252,241,0.1)]'
+          : 'border-white/5 hover:border-neo-cyan/30'
     }`}>
+      {/* Decorative Module ID */}
+      <div className="absolute top-4 right-6 text-[10px] font-mono text-white/10 tracking-[0.5em] select-none uppercase">
+        MOD-00{number} // SEC-ALPHA
+      </div>
+
       {/* Header */}
-      <div className={`px-5 py-4 border-b flex items-center justify-between ${
-        isCritical 
-          ? 'bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/10 border-red-200 dark:border-red-800'
-          : 'bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-750 border-slate-200 dark:border-slate-700'
-      }`}>
-        <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
+      <div className="px-8 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-5">
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black font-mono transition-colors ${
             isCritical
-              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+              ? 'bg-neo-amber/10 text-neo-amber border border-neo-amber/20'
               : isComplete
-                ? 'bg-[#0D7377] text-white'
-                : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
+                ? 'bg-neo-cyan text-neo-void shadow-[0_0_15px_rgba(102,252,241,0.5)]'
+                : 'bg-white/5 text-neo-slate/40 border border-white/10'
           }`}>
-            {number}
+            0{number}
           </div>
           <div>
-            <h3 className={`font-semibold ${
-              isCritical ? 'text-red-700 dark:text-red-400' : 'text-slate-900 dark:text-slate-100'
-            }`}>
+            <h3 className="text-xl font-heading font-bold text-white uppercase tracking-tight flex items-center gap-2">
               {title}
+              {isComplete && <Activity className="w-4 h-4 text-neo-cyan animate-pulse" />}
             </h3>
-            {isCritical && (
-              <span className="text-xs text-red-600 dark:text-red-400 font-medium">
-                CRITICAL RULE
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`text-[10px] font-mono uppercase tracking-widest ${
+                isCritical ? 'text-neo-amber' : 'text-neo-cyan/60'
+              }`}>
+                {isCritical ? 'Critical Priority' : 'Standard Mission'}
               </span>
-            )}
+            </div>
           </div>
         </div>
+        
         <div className="text-right">
-          <div className={`text-2xl font-bold font-['Space_Grotesk'] ${
-            isCritical && currentPoints === 0 
-              ? 'text-red-500' 
-              : 'text-[#0D7377]'
+          <div className={`text-3xl font-black font-mono tracking-tighter ${
+            isCritical && currentPoints === 0 && warning ? 'text-neo-amber' : 'text-neo-cyan'
           }`}>
-            {currentPoints}
-            <span className="text-sm text-slate-400 font-normal ml-1">/ {maxPoints}</span>
+            {currentPoints.toString().padStart(2, '0')}
+            <span className="text-sm text-neo-slate/30 font-normal ml-1">/ {maxPoints}</span>
           </div>
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="h-1 bg-slate-100 dark:bg-slate-700">
-        <div 
-          className={`h-full transition-all duration-300 ${
-            isCritical && currentPoints === 0
-              ? 'bg-red-500'
-              : isComplete
-                ? 'bg-[#0D7377]'
-                : 'bg-[#14FFEC]'
-          }`}
-          style={{ width: `${progressPercentage}%` }}
-        />
+      {/* Progress Bar (Technical Style) */}
+      <div className="px-8 mb-6">
+        <div className="h-1 bg-white/5 rounded-full overflow-hidden flex gap-1">
+          <div 
+            className={`h-full transition-all duration-700 ease-out rounded-full ${
+              isCritical && currentPoints === 0
+                ? 'bg-neo-amber shadow-[0_0_10px_rgba(255,179,0,0.5)]'
+                : 'bg-neo-cyan shadow-[0_0_10px_rgba(102,252,241,0.5)]'
+            }`}
+            style={{ width: `${progressPercentage}%` }}
+          />
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="p-5">
+      {/* Content Area */}
+      <div className="px-8 pb-8 pt-2">
         {children}
       </div>
 
-      {/* Warning */}
-      {warning && (
-        <div className={`px-5 py-3 border-t flex items-start gap-2 ${
+      {/* Footer Alerts */}
+      {(warning || isComplete) && (
+        <div className={`px-8 py-4 border-t flex items-center gap-3 ${
           isCritical && currentPoints === 0
-            ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
-            : 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800'
+            ? 'bg-neo-amber/5 border-neo-amber/10'
+            : isComplete
+              ? 'bg-neo-cyan/5 border-neo-cyan/10'
+              : 'bg-white/5 border-white/5'
         }`}>
-          <AlertTriangle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-            isCritical && currentPoints === 0 ? 'text-red-500' : 'text-amber-500'
-          }`} />
-          <span className={`text-sm ${
-            isCritical && currentPoints === 0 
-              ? 'text-red-700 dark:text-red-400' 
-              : 'text-amber-700 dark:text-amber-400'
+          {isComplete && !warning ? (
+            <CheckCircle2 className="w-4 h-4 text-neo-cyan" />
+          ) : (
+            <AlertTriangle className={`w-4 h-4 ${isCritical ? 'text-neo-amber' : 'text-neo-cyan'}`} />
+          )}
+          <span className={`text-xs font-mono uppercase tracking-wider ${
+            isCritical && currentPoints === 0 ? 'text-neo-amber' : isComplete ? 'text-neo-cyan' : 'text-neo-slate/60'
           }`}>
-            {warning}
+            {warning ? warning : 'Sub-system Synchronized'}
           </span>
-        </div>
-      )}
-
-      {/* Complete indicator */}
-      {isComplete && !warning && (
-        <div className="px-5 py-2 bg-[#0D7377]/10 border-t border-[#0D7377]/20 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-[#0D7377]" />
-          <span className="text-sm text-[#0D7377] font-medium">Mission Complete!</span>
         </div>
       )}
     </div>

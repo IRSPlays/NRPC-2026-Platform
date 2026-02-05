@@ -1,234 +1,184 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, FileText, Clock, Trophy, TrendingUp, AlertCircle } from 'lucide-react';
+import { 
+  Users, 
+  FileText, 
+  Trophy, 
+  Activity, 
+  ArrowUpRight, 
+  Cpu, 
+  HardDrive,
+  Megaphone,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  Eye,
+  X
+} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { teamsAPI, submissionsAPI, scoresAPI } from '../../lib/api';
-
-interface Stats {
-  totalTeams: number;
-  totalSubmissions: number;
-  pendingSubmissions: number;
-  pendingScores: number;
-  totalScores: number;
-  todayUploads: number;
-}
+import { scoresAPI, submissionsAPI, teamsAPI, announcementsAPI, getFileUrl } from '../../lib/api';
+import { Team, Submission, Score, Announcement } from '../../types';
 
 export default function AdminDashboard() {
-  const { isAdmin, isJudge } = useAuth();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   
-  const [stats, setStats] = useState<Stats>({
-    totalTeams: 0,
-    totalSubmissions: 0,
-    pendingSubmissions: 0,
-    pendingScores: 0,
-    totalScores: 0,
-    todayUploads: 0,
+  const [stats, setStats] = useState({
+    teams: 0,
+    submissions: 0,
+    scores: 0,
+    avgScore: 0
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [recentScores, setRecentScores] = useState<Score[]>([]);
+  const [pendingSubs, setPendingSubs] = useState<Submission[]>([]);
 
   useEffect(() => {
-    if (!isAdmin && !isJudge) {
-      navigate('/admin');
-      return;
-    }
-    loadStats();
-  }, [isAdmin, isJudge]);
+    loadDashboardData();
+  }, []);
 
-  const loadStats = async () => {
-    setLoading(true);
-    setError('');
-    
+  const loadDashboardData = async () => {
     try {
-      const [teams, submissions, scores] = await Promise.all([
+      setLoading(true);
+      const [teams, subs, scores] = await Promise.all([
         teamsAPI.getAll(),
         submissionsAPI.getAll(),
-        scoresAPI.getAll(),
+        scoresAPI.getAll()
       ]);
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
       
-      const todayUploads = submissions.filter(sub => {
-        const subDate = new Date(sub.submitted_at);
-        return subDate >= today;
-      }).length;
-
-      const pendingSubmissions = submissions.filter(sub => !sub.concept_score).length;
+      const avg = scores.length > 0 
+        ? Math.round(scores.reduce((a, b) => a + b.total_score, 0) / scores.length) 
+        : 0;
 
       setStats({
-        totalTeams: teams.length,
-        totalSubmissions: submissions.length,
-        pendingSubmissions,
-        pendingScores: submissions.filter(sub => !sub.concept_score).length,
-        totalScores: scores.length,
-        todayUploads,
+        teams: teams.length,
+        submissions: subs.length,
+        scores: scores.length,
+        avgScore: avg
       });
-    } catch (err: any) {
-      setError(err.message || 'Failed to load stats');
+
+      setRecentScores(scores.slice(0, 5));
+      setPendingSubs(subs.filter(s => !s.concept_score).slice(0, 5));
+    } catch (err) {
+      console.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isAdmin && !isJudge) {
-    return null;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-40 gap-4">
+        <div className="w-12 h-12 border-2 border-neo-amber/20 border-t-neo-amber rounded-full animate-spin" />
+        <span className="text-xs font-mono text-neo-amber/60 animate-pulse uppercase tracking-[0.4em]">Loading Admin Console...</span>
+      </div>
+    );
   }
 
-  const statCards = [
-    {
-      label: 'Total Teams',
-      value: stats.totalTeams,
-      icon: Users,
-      color: 'bg-blue-500',
-      onClick: () => navigate('/admin/teams'),
-    },
-    {
-      label: 'Total Submissions',
-      value: stats.totalSubmissions,
-      icon: FileText,
-      color: 'bg-purple-500',
-      onClick: () => navigate('/admin/submissions'),
-    },
-    {
-      label: 'Pending Reviews',
-      value: stats.pendingSubmissions,
-      icon: Clock,
-      color: 'bg-amber-500',
-      onClick: () => navigate('/admin/submissions'),
-    },
-    {
-      label: "Today's Uploads",
-      value: stats.todayUploads,
-      icon: TrendingUp,
-      color: 'bg-green-500',
-      onClick: () => navigate('/admin/submissions'),
-    },
-  ];
-
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-10">
+      {/* Admin Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
         <div>
-          <h1 className="text-3xl font-bold font-heading text-slate-900 dark:text-white">
-            Dashboard
+          <h1 className="text-4xl font-heading font-black text-white uppercase tracking-tighter mb-2">
+            Admin <span className="text-neo-amber">Dashboard</span>
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Overview of competition status
+          <p className="text-xs font-mono text-neo-slate/40 uppercase tracking-[0.3em]">
+            System Control Panel // Clearance: Level 5
           </p>
         </div>
-        <button
-          onClick={loadStats}
-          disabled={loading}
-          className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-        >
-          {loading ? 'Refreshing...' : 'Refresh'}
-        </button>
+        <div className="flex items-center gap-3 px-4 py-2 bg-neo-amber/10 border border-neo-amber/20 rounded-lg">
+          <Activity className="w-4 h-4 text-neo-amber animate-pulse" />
+          <span className="text-xs font-mono font-bold text-neo-amber uppercase">System Normal</span>
+        </div>
       </div>
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-            <AlertCircle className="w-5 h-5" />
-            <span>{error}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Stats Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <button
-              key={stat.label}
-              onClick={stat.onClick}
-              className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover:border-[#0D7377]/30 transition-all text-left group"
-            >
-              <div className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <Icon className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-3xl font-bold text-slate-900 dark:text-white">
-                {stat.value}
-              </div>
-              <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                {stat.label}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-[#0D7377]" />
-            Quick Actions
-          </h2>
-          <div className="space-y-3">
-            <button
-              onClick={() => navigate('/admin/scoring')}
-              className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50 hover:bg-[#0D7377]/10 hover:text-[#0D7377] transition-colors"
-            >
-              <span className="font-medium">Score a Robot Run</span>
-              <span className="text-sm text-slate-400">→</span>
-            </button>
-            <button
-              onClick={() => navigate('/admin/submissions')}
-              className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50 hover:bg-[#0D7377]/10 hover:text-[#0D7377] transition-colors"
-            >
-              <span className="font-medium">Review Submissions</span>
-              <span className="text-sm text-slate-400">→</span>
-            </button>
-            <button
-              onClick={() => navigate('/admin/leaderboard')}
-              className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50 hover:bg-[#0D7377]/10 hover:text-[#0D7377] transition-colors"
-            >
-              <span className="font-medium">View Leaderboard</span>
-              <span className="text-sm text-slate-400">→</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-[#0D7377]/10 to-[#14FFEC]/5 rounded-xl border border-[#0D7377]/20 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-            Competition Status
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-slate-600 dark:text-slate-400">Poster Submissions</span>
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {stats.totalSubmissions}/{stats.totalTeams}
-                </span>
-              </div>
-              <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#0D7377] rounded-full transition-all"
-                  style={{ 
-                    width: `${stats.totalTeams > 0 ? (stats.totalSubmissions / stats.totalTeams) * 100 : 0}%` 
-                  }}
-                />
-              </div>
+      {/* Main Stats */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: 'Total Teams', val: stats.teams, icon: Users, color: 'text-neo-cyan' },
+          { label: 'Submissions', val: stats.submissions, icon: FileText, color: 'text-neo-slate' },
+          { label: 'Score Logs', val: stats.scores, icon: HardDrive, color: 'text-neo-slate' },
+          { label: 'Average Score', val: stats.avgScore, icon: Trophy, color: 'text-neo-amber', sub: 'PTS' },
+        ].map((stat, i) => (
+          <div key={i} className="neo-glass p-6 rounded-2xl border-white/5 relative group hover:border-neo-amber/30 transition-all">
+            <div className="flex justify-between items-start mb-4">
+              <stat.icon className={`w-5 h-5 ${stat.color} opacity-50 group-hover:opacity-100 transition-opacity`} />
+              <ArrowUpRight className="w-4 h-4 text-white/20" />
             </div>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-slate-600 dark:text-slate-400">Submissions Reviewed</span>
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {stats.totalSubmissions - stats.pendingSubmissions}/{stats.totalSubmissions}
-                </span>
+            <div className="text-4xl font-black font-mono text-white mb-1">
+              {stat.val} <span className="text-sm font-normal text-neo-slate/30">{stat.sub}</span>
+            </div>
+            <div className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest">
+              {stat.label}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Quick Commands */}
+        <div className="lg:col-span-1 space-y-6">
+          <h2 className="text-sm font-mono font-bold text-white uppercase tracking-widest flex items-center gap-2 px-2">
+            <Cpu className="w-4 h-4 text-neo-amber" /> Quick Commands
+          </h2>
+          <div className="grid gap-4">
+            <button onClick={() => navigate('/admin/scoring')} className="neo-glass p-6 rounded-2xl border-white/5 hover:border-neo-amber/30 transition-all text-left flex items-center gap-4 group">
+              <div className="p-3 bg-neo-amber/10 rounded-xl group-hover:bg-neo-amber group-hover:text-neo-void transition-all">
+                <Plus className="w-5 h-5" />
               </div>
-              <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-green-500 rounded-full transition-all"
-                  style={{ 
-                    width: `${stats.totalSubmissions > 0 ? ((stats.totalSubmissions - stats.pendingSubmissions) / stats.totalSubmissions) * 100 : 0}%` 
-                  }}
-                />
+              <div>
+                <div className="text-sm font-bold text-white uppercase">Record Score</div>
+                <div className="text-[10px] font-mono text-neo-slate/40 uppercase">Manual Score Entry</div>
               </div>
+            </button>
+            <button onClick={() => navigate('/admin/announcements')} className="neo-glass p-6 rounded-2xl border-white/5 hover:border-neo-cyan/30 transition-all text-left flex items-center gap-4 group">
+              <div className="p-3 bg-neo-cyan/10 rounded-xl group-hover:bg-neo-cyan group-hover:text-neo-void transition-all">
+                <Megaphone className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white uppercase">Broadcast</div>
+                <div className="text-[10px] font-mono text-neo-slate/40 uppercase">Post Announcement</div>
+              </div>
+            </button>
+            <button onClick={() => navigate('/admin/leaderboard')} className="neo-glass p-6 rounded-2xl border-white/5 hover:border-neo-amber/30 transition-all text-left flex items-center gap-4 group">
+              <div className="p-3 bg-neo-amber/10 rounded-xl group-hover:bg-neo-amber group-hover:text-neo-void transition-all">
+                <Trophy className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white uppercase">Rankings</div>
+                <div className="text-[10px] font-mono text-neo-slate/40 uppercase">View Leaderboard</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Pending Actions */}
+        <div className="lg:col-span-2 space-y-6">
+           <h2 className="text-sm font-mono font-bold text-white uppercase tracking-widest flex items-center gap-2 px-2">
+            <Activity className="w-4 h-4 text-neo-cyan" /> Pending Submissions
+          </h2>
+          <div className="neo-glass rounded-2xl border-white/5 overflow-hidden">
+            <div className="divide-y divide-white/5">
+              {pendingSubs.length === 0 ? (
+                <div className="p-12 text-center text-neo-slate/40 font-mono text-xs uppercase">
+                  All submissions analyzed
+                </div>
+              ) : (
+                pendingSubs.map(sub => (
+                  <div key={sub.id} className="p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                    <div>
+                      <div className="text-sm font-bold text-white">{sub.team_name}</div>
+                      <div className="text-[10px] font-mono text-neo-slate/40 uppercase truncate max-w-[200px]">{sub.original_filename}</div>
+                    </div>
+                    <button onClick={() => navigate('/admin/submissions')} className="text-[10px] font-mono font-bold uppercase tracking-widest text-neo-cyan hover:neo-text-glow">
+                      Review Package &gt;
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
