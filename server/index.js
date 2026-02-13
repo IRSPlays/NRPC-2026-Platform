@@ -18,11 +18,21 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const isProd = process.env.NODE_ENV === 'production';
 
-// Persistent Data Directory
-const DATA_DIR = process.env.DATA_DIR || (isProd ? '/app/data' : path.join(process.cwd(), 'data'));
+// Persistent Data Directory Strategy
+let DATA_DIR;
+if (fs.existsSync('/app/data')) {
+  DATA_DIR = '/app/data';
+  console.log('✓ Railway Volume Detected at /app/data');
+} else if (process.env.DATA_DIR) {
+  DATA_DIR = process.env.DATA_DIR;
+} else {
+  DATA_DIR = path.join(process.cwd(), 'data');
+}
+
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+console.log(`✓ Active Storage Path: ${DATA_DIR}`);
 
 // Enable trust proxy for Railway/Heroku/Vercel to fix rate-limiting
 app.set('trust proxy', 1);

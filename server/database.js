@@ -7,14 +7,24 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Persistent Data Directory
-// In Railway, mount volume to /app/data
-const isProd = process.env.NODE_ENV === 'production';
-const DATA_DIR = process.env.DATA_DIR || (isProd ? '/app/data' : path.join(process.cwd(), 'data'));
+// Persistent Data Directory Strategy
+// 1. Check if /app/data exists (Railway Volume)
+// 2. Check process.env.DATA_DIR
+// 3. Fallback to local ./data
+let DATA_DIR;
+if (fs.existsSync('/app/data')) {
+  DATA_DIR = '/app/data';
+} else if (process.env.DATA_DIR) {
+  DATA_DIR = process.env.DATA_DIR;
+} else {
+  DATA_DIR = path.join(process.cwd(), 'data');
+}
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+
+console.log(`✓ Storage Root: ${DATA_DIR}`); // Debug log
 
 const DB_PATH = path.join(DATA_DIR, 'database.sqlite');
 
