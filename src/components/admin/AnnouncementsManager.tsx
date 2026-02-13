@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Megaphone, Plus, Trash2, Pin, PinOff, AlertCircle, CheckCircle2, Clock, X } from 'lucide-react';
-import { announcementsAPI, Announcement } from '../../lib/api';
+import { Plus, Trash2, Pin, PinOff, AlertCircle, CheckCircle2, Clock, X } from 'lucide-react';
+import { announcementsAPI } from '../../lib/api';
+import type { Announcement } from '../../types';
 
 export default function AnnouncementsManager() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -26,8 +27,8 @@ export default function AnnouncementsManager() {
       setLoading(true);
       const data = await announcementsAPI.getAll();
       setAnnouncements(data);
-    } catch (err) {
-      setError('Failed to load announcements');
+    } catch (err: any) {
+      setError(err.message || 'Failed to load announcements');
     } finally {
       setLoading(false);
     }
@@ -43,8 +44,8 @@ export default function AnnouncementsManager() {
       setFormData({ title: '', content: '', priority: 'medium', is_pinned: false, expires_at: '' });
       setShowAdd(false);
       loadAnnouncements();
-    } catch (err) {
-      setError('Failed to post announcement');
+    } catch (err: any) {
+      setError(err.message || 'Failed to post announcement');
     }
   };
 
@@ -53,8 +54,8 @@ export default function AnnouncementsManager() {
     try {
       await announcementsAPI.delete(id);
       loadAnnouncements();
-    } catch (err) {
-      setError('Failed to delete');
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete');
     }
   };
 
@@ -62,8 +63,8 @@ export default function AnnouncementsManager() {
     try {
       await announcementsAPI.togglePin(id);
       loadAnnouncements();
-    } catch (err) {
-      setError('Failed to toggle pin');
+    } catch (err: any) {
+      setError(err.message || 'Failed to toggle pin');
     }
   };
 
@@ -107,7 +108,7 @@ export default function AnnouncementsManager() {
                 <label className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest ml-4">Priority</label>
                 <select
                   value={formData.priority}
-                  onChange={e => setFormData({ ...formData, priority: e.target.value as any })}
+                  onChange={e => setFormData({ ...formData, priority: e.target.value as 'low' | 'medium' | 'high' })}
                   className="w-full bg-neo-void/50 border border-white/10 rounded-2xl py-4 px-6 text-white outline-none focus:border-neo-cyan/40 appearance-none"
                 >
                   <option value="low">Low Priority</option>
@@ -153,7 +154,7 @@ export default function AnnouncementsManager() {
             <div key={ann.id} className="neo-glass p-8 rounded-3xl border-white/5 flex items-start justify-between group hover:border-neo-cyan/20 transition-all">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  {ann.is_pinned === 1 && <Pin className="w-4 h-4 text-neo-cyan fill-neo-cyan" />}
+                  {ann.is_pinned && <Pin className="w-4 h-4 text-neo-cyan fill-neo-cyan" />}
                   <span className={`text-[10px] font-mono px-3 py-1 rounded-full uppercase tracking-widest ${
                     ann.priority === 'high' ? 'bg-neo-amber/10 text-neo-amber border border-neo-amber/20' : 
                     ann.priority === 'medium' ? 'bg-neo-cyan/10 text-neo-cyan border border-neo-cyan/20' : 'bg-white/5 text-neo-slate/40 border border-white/10'
@@ -171,7 +172,7 @@ export default function AnnouncementsManager() {
               </div>
               <div className="flex flex-col gap-2">
                 <button onClick={() => handleTogglePin(ann.id)} className="p-3 bg-white/5 rounded-xl hover:bg-neo-cyan/10 hover:text-neo-cyan transition-all">
-                  {ann.is_pinned === 1 ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                  {ann.is_pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
                 </button>
                 <button onClick={() => handleDelete(ann.id)} className="p-3 bg-white/5 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-all">
                   <Trash2 className="w-4 h-4" />

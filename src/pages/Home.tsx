@@ -1,16 +1,23 @@
 import { Link } from 'react-router-dom';
-import { Calculator, Upload, ArrowRight, Zap, Target, BookOpen, Cpu, ShieldAlert } from 'lucide-react';
+import { Calculator, Upload, ArrowRight, Zap, Target, BookOpen, Cpu, ShieldAlert, Calendar, QrCode, ExternalLink } from 'lucide-react';
 import CountdownTimer from '../components/home/CountdownTimer';
 import Announcements from '../components/home/Announcements';
 
 const COMPETITION_DATE = '2026-05-09T17:00:00';
 
+const timeline = [
+  { date: '23 JAN - 4 MAR', event: 'Registration Open', active: true },
+  { date: '8 MAY, 5PM', event: 'Submission Deadline', active: false },
+  { date: '20 MAY, 5PM', event: 'Results of Selected Teams', active: false },
+  { date: '28 MAY, 2:30PM', event: 'Surprise Mission', active: false },
+  { date: '28 MAY', event: 'Prize Giving Ceremony', active: false },
+];
+
 export default function Home() {
   return (
-    <div className="space-y-16 md:space-y-24 py-6 md:py-10">
-      {/* Hero Section - High Tech "De-Extinction" Command Center */}
+    <div className="space-y-16 md:space-y-32 py-6 md:py-10">
+      {/* Hero Section */}
       <section className="relative text-center space-y-8 md:space-y-12">
-        {/* Ambient Glows */}
         <div className="absolute inset-0 -top-20 -z-10 flex justify-center opacity-30 pointer-events-none">
           <div className="w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-neo-cyan/10 blur-[80px] md:blur-[120px] rounded-full animate-pulse-slow"></div>
         </div>
@@ -44,36 +51,65 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Hosted By Section */}
+        {/* Hosting Partners */}
         <div className="pt-8 md:pt-16 flex flex-col items-center gap-6 md:gap-10 px-4">
           <p className="text-[8px] md:text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.4em] md:tracking-[0.6em] neo-text-glow">Tournament Hosting Partners</p>
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-32">
             <div className="flex flex-col items-center gap-3 md:gap-4 group">
-              <img 
-                src="/ADSS Logo.png" 
-                className="h-16 sm:h-24 md:h-32 w-auto filter drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all duration-500 group-hover:scale-110" 
-                alt="ADSS"
-              />
+              <img src="/ADSS Logo.png" className="h-16 sm:h-24 md:h-32 w-auto filter drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all duration-500 group-hover:scale-110" alt="ADSS" />
               <span className="text-[8px] md:text-[10px] font-mono text-neo-slate/40 group-hover:text-neo-cyan transition-colors uppercase tracking-widest text-center">Admiralty Secondary School</span>
             </div>
             <div className="flex flex-col items-center gap-3 md:gap-4 group">
-              <img 
-                src="/NYP Lgo.svg" 
-                className="h-16 sm:h-24 md:h-32 w-auto filter drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all duration-500 group-hover:scale-110" 
-                alt="NYP"
-              />
+              <img src="/NYP Lgo.svg" className="h-16 sm:h-24 md:h-32 w-auto filter drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all duration-500 group-hover:scale-110" alt="NYP" />
               <span className="text-[8px] md:text-[10px] font-mono text-neo-slate/40 group-hover:text-neo-amber transition-colors uppercase tracking-widest text-center">Nanyang Polytechnic</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Announcements Glass Panel */}
+      {/* Registration Section - NEW */}
+      <section className="max-w-5xl mx-auto px-4 relative z-10">
+        <div className="neo-glass rounded-[2rem] border-2 border-neo-cyan/20 p-8 md:p-12 overflow-hidden relative group">
+          <div className="scanning-line absolute w-full top-0 left-0 opacity-20"></div>
+          <div className="flex flex-col md:flex-row items-center gap-10">
+            <div className="shrink-0 relative">
+              <div className="absolute -inset-4 bg-neo-cyan/20 blur-2xl rounded-full animate-pulse-slow"></div>
+              <img 
+                src="/registration-qr.png" 
+                alt="Registration QR" 
+                className="w-48 h-48 md:w-56 md:h-56 relative z-10 rounded-2xl border-4 border-white/10"
+              />
+            </div>
+            <div className="flex-1 text-center md:text-left space-y-6">
+              <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-neo-cyan/10 border border-neo-cyan/30 text-neo-cyan text-xs font-mono uppercase tracking-widest animate-bounce">
+                Status: Registration Open
+              </div>
+              <h2 className="text-3xl md:text-5xl font-heading font-black text-white uppercase tracking-tight leading-none">
+                Join the <span className="text-neo-cyan">Frontier</span>
+              </h2>
+              <p className="text-neo-slate/60 text-sm md:text-lg leading-relaxed max-w-xl">
+                The 18th Edition of NRPC is now accepting recruits. Secure your team's position in the de-extinction taskforce.
+              </p>
+              <a 
+                href="https://go.gov.sg/18th-nrpc" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 px-8 py-4 bg-neo-cyan text-neo-void rounded-xl font-heading font-black uppercase tracking-widest hover:shadow-[0_0_30px_rgba(102,252,241,0.5)] transition-all group"
+              >
+                Register Now
+                <ExternalLink className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Announcements */}
       <section className="max-w-4xl mx-auto px-4 relative z-10">
         <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-neo-cyan to-neo-amber opacity-10 group-hover:opacity-20 blur transition-all rounded-3xl"></div>
           <div className="relative neo-glass rounded-3xl p-1 overflow-hidden">
-            <div className="scanning-line absolute w-full top-0 left-0"></div>
+            <div className="scanning-line absolute w-full top-0 left-0 opacity-20"></div>
             <div className="p-4 md:p-6">
               <div className="flex items-center gap-3 mb-4 md:mb-6 border-b border-neo-cyan/10 pb-4">
                 <ShieldAlert className="w-5 h-5 text-neo-amber" />
@@ -81,6 +117,38 @@ export default function Home() {
               </div>
               <Announcements />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Competition Timeline - NEW */}
+      <section className="max-w-5xl mx-auto px-4 relative z-10">
+        <div className="flex flex-col items-center gap-12">
+          <div className="text-center">
+            <h2 className="text-xs font-mono text-neo-cyan/60 uppercase tracking-[0.5em] mb-2">Tournament Roadmap</h2>
+            <p className="text-3xl font-heading font-black text-white uppercase tracking-tight">Mission Schedule</p>
+          </div>
+          
+          <div className="w-full grid grid-cols-1 md:grid-cols-5 gap-4">
+            {timeline.map((item, index) => (
+              <div 
+                key={index}
+                className={`neo-glass p-6 rounded-2xl border transition-all duration-500 relative group overflow-hidden ${
+                  item.active ? 'border-neo-cyan/40 bg-neo-cyan/5' : 'border-white/5 opacity-60 grayscale hover:opacity-100 hover:grayscale-0'
+                }`}
+              >
+                {item.active && <div className="scanning-line absolute w-full top-0 left-0 opacity-20"></div>}
+                <div className="relative z-10 space-y-4">
+                  <div className={`text-[10px] font-mono font-bold tracking-widest ${item.active ? 'text-neo-cyan' : 'text-neo-slate/40'}`}>
+                    {item.date}
+                  </div>
+                  <div className={`text-sm font-heading font-bold uppercase leading-tight ${item.active ? 'text-white' : 'text-neo-slate/60'}`}>
+                    {item.event}
+                  </div>
+                  <div className={`w-2 h-2 rounded-full ${item.active ? 'bg-neo-cyan animate-pulse shadow-[0_0_10px_rgba(102,252,241,0.8)]' : 'bg-white/10'}`}></div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -152,7 +220,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Call to Actions - Floating Dock Style */}
+      {/* Call to Actions */}
       <section className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 pt-6 md:pt-10 px-4 relative z-10">
         <Link to="/calculator" className="w-full sm:w-auto btn-neo group flex items-center justify-center gap-3 py-4 md:py-5 px-8 md:px-12 text-base md:text-lg">
           <Target className="w-5 h-5 md:w-6 md:h-6 group-hover:rotate-90 transition-transform" />
@@ -166,7 +234,11 @@ export default function Home() {
       </section>
 
       <footer className="text-center py-12 md:py-20 border-t border-white/5 opacity-50 relative z-10">
-        <p className="text-[8px] md:text-[10px] font-mono text-neo-slate/30 uppercase tracking-[0.2em] md:tracking-[0.4em] px-4">
+        <div className="flex justify-center gap-8 mb-8 opacity-40">
+           <img src="/ADSS Logo.png" alt="ADSS" className="h-10 w-auto" />
+           <img src="/NYP Lgo.svg" alt="NYP" className="h-10 w-auto" />
+        </div>
+        <p className="text-[8px] md:text-[10px] font-mono text-neo-slate/30 uppercase tracking-[0.4em] px-4">
           Powered by NRPC Intelligence // © 2026 De-Extinction Taskforce
         </p>
       </footer>

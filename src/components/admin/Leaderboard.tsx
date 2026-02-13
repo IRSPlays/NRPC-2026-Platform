@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Medal, Clock, AlertCircle, Download, Search, Settings, FileText, Cpu, Star, Activity } from 'lucide-react';
+import { Trophy, Clock, AlertCircle, Download, Search, Settings, FileText, Cpu, Star, Activity } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { scoresAPI, submissionsAPI, teamsAPI } from '../../lib/api';
-import { Score, Team, Submission } from '../../types';
+import { scoresAPI } from '../../lib/api';
+import { Team } from '../../types';
 
 interface LeaderboardEntry {
   rank: number;
@@ -30,7 +30,6 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'Primary' | 'Secondary'>('all');
   const [viewMode, setViewMode] = useState<'championship' | 'robot' | 'mech' | 'poster'>('championship');
 
   useEffect(() => {
@@ -83,8 +82,7 @@ export default function Leaderboard() {
   const filteredEntries = entries.filter(entry => {
     const matchesSearch = entry.team.team_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           entry.team.school_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || entry.team.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    return matchesSearch;
   });
 
   const sortedEntries = [...filteredEntries].sort((a, b) => {
@@ -94,8 +92,11 @@ export default function Leaderboard() {
     return b.championshipScore - a.championshipScore; // Default Championship
   });
 
-  // Re-rank after sorting
-  sortedEntries.forEach((e, i) => e.rank = i + 1);
+  // Re-rank after sorting (create new array to avoid mutation)
+  const rankedEntries = sortedEntries.map((entry, index) => ({
+    ...entry,
+    rank: index + 1
+  }));
 
   const getRankStyle = (rank: number) => {
     if (rank === 1) return 'bg-neo-amber text-neo-void shadow-[0_0_15px_rgba(255,179,0,0.5)]';
@@ -133,6 +134,7 @@ export default function Leaderboard() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search team or school..."
+            aria-label="Search teams"
             className="w-full bg-neo-void/50 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-white font-mono outline-none focus:border-neo-cyan/40 transition-all"
           />
         </div>
@@ -140,14 +142,14 @@ export default function Leaderboard() {
         {/* View Mode */}
         <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
           {[
-            { id: 'championship', icon: Trophy, label: 'Overall' },
-            { id: 'robot', icon: Cpu, label: 'Robot' },
-            { id: 'mech', icon: Settings, label: 'Mech' },
-            { id: 'poster', icon: FileText, label: 'Poster' },
+            { id: 'championship' as const, icon: Trophy, label: 'Overall' },
+            { id: 'robot' as const, icon: Cpu, label: 'Robot' },
+            { id: 'mech' as const, icon: Settings, label: 'Mech' },
+            { id: 'poster' as const, icon: FileText, label: 'Poster' },
           ].map((mode) => (
             <button
               key={mode.id}
-              onClick={() => setViewMode(mode.id as any)}
+              onClick={() => setViewMode(mode.id)}
               className={`flex items-center gap-2 px-6 py-3 rounded-xl text-[10px] font-mono font-bold uppercase tracking-widest transition-all ${
                 viewMode === mode.id ? 'bg-neo-cyan text-neo-void shadow-[0_0_15px_rgba(102,252,241,0.3)]' : 'text-neo-slate/40 hover:text-white'
               }`}
@@ -163,23 +165,23 @@ export default function Leaderboard() {
       <div className="neo-glass rounded-3xl border-white/5 overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-20"><Activity className="animate-spin text-neo-cyan" /></div>
-        ) : sortedEntries.length === 0 ? (
+        ) : rankedEntries.length === 0 ? (
           <div className="p-20 text-center text-neo-slate/40 font-mono text-xs uppercase tracking-widest">No rankings available</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-white/5 border-b border-white/5">
-                  <th className="px-6 py-6 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Rank</th>
-                  <th className="px-6 py-6 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Unit Identity</th>
-                  <th className="px-6 py-6 text-center text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Robot (60%)</th>
-                  <th className="px-6 py-6 text-center text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Mech (20%)</th>
-                  <th className="px-6 py-6 text-center text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Poster (20%)</th>
-                  <th className="px-6 py-6 text-center text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Total Score</th>
+                  <th scope="col" className="px-6 py-6 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Rank</th>
+                  <th scope="col" className="px-6 py-6 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Unit Identity</th>
+                  <th scope="col" className="px-6 py-6 text-center text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Robot (60%)</th>
+                  <th scope="col" className="px-6 py-6 text-center text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Mech (20%)</th>
+                  <th scope="col" className="px-6 py-6 text-center text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Poster (20%)</th>
+                  <th scope="col" className="px-6 py-6 text-center text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Total Score</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {sortedEntries.map((entry) => (
+                {rankedEntries.map((entry) => (
                   <tr key={entry.team.id} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-6 py-6">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black font-mono text-lg ${getRankStyle(entry.rank)}`}>

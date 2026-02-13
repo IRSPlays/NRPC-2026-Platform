@@ -22,9 +22,10 @@ const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json');
 const TOKEN_PATH = path.join(__dirname, 'token.json');
 
 // Database and backup paths
-const DB_PATH = process.env.DB_PATH || './database.sqlite';
-const UPLOADS_DIR = process.env.UPLOADS_DIR || './uploads';
-const BACKUP_DIR = process.env.BACKUP_DIR || './backups';
+const PROJECT_ROOT = path.join(__dirname, '..');
+const DB_PATH = process.env.DB_PATH || path.join(PROJECT_ROOT, 'database.sqlite');
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(PROJECT_ROOT, 'uploads');
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(PROJECT_ROOT, 'backups');
 
 // SCOPES for Google Drive
 const SCOPES = [

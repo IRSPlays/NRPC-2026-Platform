@@ -1,51 +1,58 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Link2, FileText, AlertCircle, CheckCircle2, X, FileUp, Info, Zap, Video, ClipboardCheck } from 'lucide-react';
+import { Upload, Link2, FileText, AlertCircle, CheckCircle2, FileUp, Info, Zap, Video, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { submissionsAPI } from '../lib/api';
+import { submissionsAPI, teamsAPI } from '../lib/api';
 
 type TabType = 'poster' | 'robot_run';
 
 export default function Submit() {
-  const { isTeam, teamId, teamName } = useAuth();
+  const { isTeam, teamId, teamName, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<TabType>('poster');
-  const [submissionMethod, setSubmissionMethod] = useState<'file' | 'link'>('file');
-  
-  const [file, setFile] = useState<File | null>(null);
-  const [externalLink, setExternalLink] = useState('');
-  const [originalFilename, setOriginalFilename] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
+  const [posterMethod, setPosterMethod] = useState<'file' | 'link'>('file');
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [posterLink, setPosterLink] = useState('');
+  const [posterFilename, setPosterFilename] = useState('');
+  const [posterFilenameTouched, setPosterFilenameTouched] = useState(false);
+  const [posterCategory, setPosterCategory] = useState<'Primary' | 'Secondary'>('Primary');
+
+  const [robotVideoLink, setRobotVideoLink] = useState('');
+  const [robotVideoFilename, setRobotVideoFilename] = useState('');
+  const [robotVideoFilenameTouched, setRobotVideoFilenameTouched] = useState(false);
+  const [robotSheetFile, setRobotSheetFile] = useState<File | null>(null);
+  const [robotSheetFilename, setRobotSheetFilename] = useState('');
+  const [robotSheetFilenameTouched, setRobotSheetFilenameTouched] = useState(false);
+  const [schoolName, setSchoolName] = useState('');
+  const [posterIsDragging, setPosterIsDragging] = useState(false);
+  const [robotIsDragging, setRobotIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const sanitizedTeamName = teamName ? teamName.replace(/\s+/g, '') : 'Team';
+  const sanitizedSchoolName = schoolName ? schoolName.replace(/\s+/g, '') : 'School';
 
-  if (!isTeam) {
-    navigate('/team-login');
-    return null;
+  const posterFileInputRef = useRef<HTMLInputElement>(null);
+  const robotSheetInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isTeam && !authLoading) {
+      navigate('/team-login');
+    }
+  }, [isTeam, authLoading, navigate]);
+
+  if (!isTeam || authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-40 gap-4">
+        <div className="w-12 h-12 border-2 border-neo-cyan/20 border-t-neo-cyan rounded-full animate-spin" />
+        <span className="text-xs font-mono text-neo-cyan/60 animate-pulse uppercase tracking-[0.4em]">Loading...</span>
+      </div>
+    );
   }
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const droppedFile = e.dataTransfer?.files?.[0];
-    if (droppedFile) validateAndSetFile(droppedFile);
-  }, []);
-
-  const validateAndSetFile = (selectedFile: File) => {
+  const validatePosterFile = (selectedFile: File) => {
     const validTypes = [
       'application/pdf', 
       'application/vnd.openxmlformats-officedocument.presentationml.presentation', 
@@ -60,46 +67,175 @@ export default function Submit() {
       setError('Invalid file type. Please upload PDF, PPTX, Images, or Excel.');
       return;
     }
-    setFile(selectedFile);
-    setOriginalFilename(selectedFile.name);
+    setPosterFile(selectedFile);
+    if (!posterFilenameTouched) {
+      setPosterFilename(selectedFile.name);
+    }
     setError('');
   };
 
+  const validateRobotSheetFile = (selectedFile: File) => {
+    const validTypes = [
+      'application/pdf', 
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation', 
+      'application/vnd.ms-powerpoint', 
+      'image/jpeg', 
+      'image/png', 
+      'image/jpg',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel'
+    ];
+    if (!validTypes.includes(selectedFile.type)) {
+      setError('Invalid file type. Please upload PDF, PPTX, Images, or Excel.');
+      return;
+    }
+    setRobotSheetFile(selectedFile);
+    if (!robotSheetFilenameTouched) {
+      setRobotSheetFilename(generateRobotFilename('ScoringSheet'));
+    }
+    setError('');
+  };
+
+  const handlePosterDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setPosterIsDragging(true);
+  };
+
+  const handlePosterDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setPosterIsDragging(false);
+  };
+
+  const handlePosterDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setPosterIsDragging(false);
+    const droppedFile = e.dataTransfer?.files?.[0];
+    if (droppedFile) validatePosterFile(droppedFile);
+  };
+
+  const handleRobotDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setRobotIsDragging(true);
+  };
+
+  const handleRobotDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setRobotIsDragging(false);
+  };
+
+  const handleRobotDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setRobotIsDragging(false);
+    const droppedFile = e.dataTransfer?.files?.[0];
+    if (droppedFile) validateRobotSheetFile(droppedFile);
+  };
+
   const validateFilename = (filename: string) => {
+    if (!teamName) return false;
+    
     if (activeTab === 'poster') {
-      const pattern = new RegExp(`^${teamName?.replace(/\s+/g, '')}_[A-Za-z0-9]+_DeExtinction_(Primary|Secondary)\\.(pdf|pptx?|png|jpg|jpeg)$`, 'i');
+      const pattern = new RegExp(`^${teamName.replace(/\s+/g, '')}_[A-Za-z0-9]+_DeExtinction_(Primary|Secondary)\\.(pdf|pptx?|png|jpg|jpeg)$`, 'i');
       return pattern.test(filename);
     } else {
       // Robot run validation: (TeamName)_(School)_RunVideo or (TeamName)_(School)_ScoringSheet
-      const pattern = new RegExp(`^${teamName?.replace(/\s+/g, '')}_[A-Za-z0-9]+_(RunVideo|ScoringSheet).*`, 'i');
+      const pattern = new RegExp(`^${teamName.replace(/\s+/g, '')}_[A-Za-z0-9]+_(RunVideo|ScoringSheet).*`, 'i');
       return pattern.test(filename);
     }
   };
 
+  const generateRobotFilename = useCallback((kind: 'RunVideo' | 'ScoringSheet') => {
+    if (!teamName) return '';
+    return `${sanitizedTeamName}_${sanitizedSchoolName}_${kind}`;
+  }, [teamName, sanitizedTeamName, sanitizedSchoolName]);
+
+  useEffect(() => {
+    if (!teamId) return;
+    const loadTeamSchool = async () => {
+      try {
+        const teams = await teamsAPI.getAll();
+        const team = teams.find((t) => String(t.id) === String(teamId));
+        if (team) {
+          setSchoolName(team.school_name);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    loadTeamSchool();
+  }, [teamId]);
+
+  useEffect(() => {
+    if (activeTab !== 'robot_run') return;
+      if (!robotVideoFilenameTouched) {
+        const generated = generateRobotFilename('RunVideo');
+        if (generated) {
+          setRobotVideoFilename(generated);
+        }
+      }
+    if (!robotSheetFilenameTouched) {
+      const generated = generateRobotFilename('ScoringSheet');
+      if (generated) {
+        setRobotSheetFilename(generated);
+      }
+    }
+  }, [activeTab, robotVideoFilenameTouched, robotSheetFilenameTouched, generateRobotFilename]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    if (!validateFilename(originalFilename)) {
-      if (activeTab === 'poster') {
+    if (activeTab === 'poster') {
+      if (!validateFilename(posterFilename)) {
         setError(`Filename format error.\nCorrect format: TEAMNAME_SCHOOLNAME_DeExtinction_Category.ext`);
-      } else {
-        setError(`Filename format error.\nCorrect format: TEAMNAME_SCHOOLNAME_RunVideo OR TEAMNAME_SCHOOLNAME_ScoringSheet`);
+        return;
       }
+      if (posterMethod === 'file' && !posterFile) {
+        setError('Please upload a poster file.');
+        return;
+      }
+      if (posterMethod === 'link' && !posterLink) {
+        setError('Please provide a poster link.');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        if (posterMethod === 'file' && posterFile) {
+          await submissionsAPI.uploadFile(Number(teamId), posterFile, posterFilename, 'file');
+        } else if (posterMethod === 'link' && posterLink) {
+          await submissionsAPI.submitLink(Number(teamId), posterLink, posterFilename, 'link');
+        }
+
+        setSuccess('Submission successful! Returning to dashboard...');
+        setTimeout(() => navigate('/team-dashboard'), 2000);
+      } catch (err: any) {
+        setError(err.message || 'Submission failed.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (!robotVideoLink) {
+      setError('Please provide a video link.');
+      return;
+    }
+
+    if (!robotSheetFile) {
+      setError('Please upload the scoring sheet file.');
+      return;
+    }
+
+    if (!validateFilename(robotVideoFilename) || !validateFilename(robotSheetFilename)) {
+      setError('Filename format error.\nCorrect format: TEAMNAME_SCHOOLNAME_RunVideo OR TEAMNAME_SCHOOLNAME_ScoringSheet');
       return;
     }
 
     setLoading(true);
     try {
-      const subType = activeTab === 'poster' ? 'file' : 'robot_run';
-      
-      if (submissionMethod === 'file' && file) {
-        await submissionsAPI.uploadFile(Number(teamId), file, originalFilename, subType);
-      } else if (submissionMethod === 'link' && externalLink) {
-        await submissionsAPI.submitLink(Number(teamId), externalLink, originalFilename, subType);
-      }
-      
-      setSuccess('Submission successful! Returning to dashboard...');
+      await submissionsAPI.submitLink(Number(teamId), robotVideoLink, robotVideoFilename, 'link');
+      await submissionsAPI.uploadFile(Number(teamId), robotSheetFile, robotSheetFilename, 'file');
+
+      setSuccess('Robot performance submission successful! Returning to dashboard...');
       setTimeout(() => navigate('/team-dashboard'), 2000);
     } catch (err: any) {
       setError(err.message || 'Submission failed.');
@@ -110,14 +246,8 @@ export default function Submit() {
 
   const switchTab = (tab: TabType) => {
     setActiveTab(tab);
-    setFile(null);
-    setExternalLink('');
-    setOriginalFilename('');
     setError('');
     setSuccess('');
-    // Default method for robot run is link (for video)
-    if (tab === 'robot_run') setSubmissionMethod('link');
-    else setSubmissionMethod('file');
   };
 
   return (
@@ -193,27 +323,42 @@ export default function Submit() {
           </div>
         )}
 
-        {/* Submission Method Selection */}
-        <div className="flex border-b border-white/5">
-          <button
-            onClick={() => { setSubmissionMethod('file'); setFile(null); setExternalLink(''); }}
-            className={`flex-1 py-6 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${
-              submissionMethod === 'file' ? 'text-neo-cyan bg-white/5 border-b-2 border-neo-cyan' : 'text-neo-slate/40 hover:text-neo-slate'
-            }`}
-          >
-            <FileUp className="w-4 h-4" />
-            {activeTab === 'poster' ? 'Local File' : 'Self-Scoring Sheet'}
-          </button>
-          <button
-            onClick={() => { setSubmissionMethod('link'); setFile(null); setExternalLink(''); }}
-            className={`flex-1 py-6 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${
-              submissionMethod === 'link' ? 'text-neo-cyan bg-white/5 border-b-2 border-neo-cyan' : 'text-neo-slate/40 hover:text-neo-slate'
-            }`}
-          >
-            <Link2 className="w-4 h-4" />
-            {activeTab === 'poster' ? 'External Link' : 'Video Link (YouTube/Drive)'}
-          </button>
-        </div>
+        {/* Submission Method Selection (Poster only) */}
+        {activeTab === 'poster' && (
+          <div className="flex border-b border-white/5">
+            <button
+              onClick={() => { setPosterMethod('file'); }}
+              className={`flex-1 py-6 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${
+                posterMethod === 'file' ? 'text-neo-cyan bg-white/5 border-b-2 border-neo-cyan' : 'text-neo-slate/40 hover:text-neo-slate'
+              }`}
+            >
+              <FileUp className="w-4 h-4" />
+              Local File
+            </button>
+            <button
+              onClick={() => { setPosterMethod('link'); }}
+              className={`flex-1 py-6 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${
+                posterMethod === 'link' ? 'text-neo-cyan bg-white/5 border-b-2 border-neo-cyan' : 'text-neo-slate/40 hover:text-neo-slate'
+              }`}
+            >
+              <Link2 className="w-4 h-4" />
+              External Link
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'robot_run' && (
+          <div className="flex border-b border-white/5">
+            <div className="flex-1 py-4 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 text-neo-amber bg-white/5 border-b-2 border-neo-amber">
+              <Video className="w-4 h-4" />
+              Run Video Link
+            </div>
+            <div className="flex-1 py-4 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 text-neo-amber bg-white/5 border-b-2 border-neo-amber">
+              <FileText className="w-4 h-4" />
+              Scoring Sheet File
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="p-10 space-y-8">
           {/* Format Info */}
@@ -227,10 +372,10 @@ export default function Submit() {
                   : 'TEAMNAME_SCHOOLNAME_(RunVideo or ScoringSheet)'}
               </code>
               <p className="text-neo-slate/40 text-[10px] uppercase">
-                Example: <span className="font-mono text-white/60">
-                  {activeTab === 'poster' 
-                    ? `${teamName?.replace(/\s+/g, '')}_ACS_DeExtinction_Secondary.pdf`
-                    : `${teamName?.replace(/\s+/g, '')}_ACS_RunVideo`}
+                 Example: <span className="font-mono text-white/60">
+            {activeTab === 'poster' 
+                     ? `${sanitizedTeamName}_${sanitizedSchoolName}_DeExtinction_${posterCategory}.pdf`
+                     : `${sanitizedTeamName}_${sanitizedSchoolName}_RunVideo / ${sanitizedTeamName}_${sanitizedSchoolName}_ScoringSheet`}
                 </span>
               </p>
             </div>
@@ -248,48 +393,104 @@ export default function Submit() {
             </div>
           )}
 
-          {submissionMethod === 'file' ? (
-            <div className="space-y-6">
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-[2rem] p-12 text-center cursor-pointer transition-all ${
-                  isDragging ? 'border-neo-cyan bg-neo-cyan/5' : file ? 'border-neo-cyan bg-neo-cyan/10' : 'border-white/10 hover:border-neo-cyan/30'
-                }`}
-              >
-                <input ref={fileInputRef} type="file" onChange={e => { const f = e.target.files?.[0]; if(f) validateAndSetFile(f); }} className="hidden" />
-                {file ? (
-                  <div className="flex flex-col items-center gap-4">
-                    <FileText className="w-12 h-12 text-neo-cyan" />
-                    <div>
-                      <div className="text-white font-bold mb-1">{file.name}</div>
-                      <div className="text-[10px] font-mono text-neo-slate/40 uppercase">{(file.size / 1024 / 1024).toFixed(2)} MB</div>
+          {activeTab === 'poster' ? (
+            posterMethod === 'file' ? (
+              <div className="space-y-6">
+                <div
+                  onDragOver={handlePosterDragOver}
+                  onDragLeave={handlePosterDragLeave}
+                  onDrop={handlePosterDrop}
+                  onClick={() => {
+                    posterFileInputRef.current?.click();
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload poster file"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      posterFileInputRef.current?.click();
+                    }
+                  }}
+                  className={`border-2 border-dashed rounded-[2rem] p-12 text-center cursor-pointer transition-all ${
+                    posterIsDragging
+                      ? 'border-neo-cyan bg-neo-cyan/5'
+                      : posterFile
+                      ? 'border-neo-cyan bg-neo-cyan/10'
+                      : 'border-white/10 hover:border-neo-cyan/30'
+                  }`}
+                >
+                  <input
+                    ref={posterFileInputRef}
+                    type="file"
+                    aria-label="Select poster file"
+                    onChange={(e) => {
+                      const selected = e.target.files?.[0];
+                      if (selected) validatePosterFile(selected);
+                    }}
+                    className="hidden"
+                  />
+                  {posterFile ? (
+                    <div className="flex flex-col items-center gap-4">
+                      <FileText className="w-12 h-12 text-neo-cyan" />
+                      <div>
+                        <div className="text-white font-bold mb-1">{posterFile.name}</div>
+                        <div className="text-[10px] font-mono text-neo-slate/40 uppercase">{(posterFile.size / 1024 / 1024).toFixed(2)} MB</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPosterFile(null);
+                        }}
+                        className="text-neo-amber text-[10px] font-bold uppercase hover:underline"
+                      >
+                        Flush Buffer
+                      </button>
                     </div>
-                    <button type="button" onClick={e => { e.stopPropagation(); setFile(null); }} className="text-neo-amber text-[10px] font-bold uppercase hover:underline">Flush Buffer</button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <Upload className="w-12 h-12 text-neo-cyan/40 mx-auto mb-4" />
-                    <p className="text-sm font-bold uppercase tracking-widest text-neo-slate/60">Drag Artifact or <span className="text-neo-cyan">Manual Load</span></p>
-                    <p className="text-[10px] font-mono text-neo-slate/30 uppercase tracking-tighter">PDF / PPTX / Images / XLSX // MAX 50MB</p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="space-y-4">
+                      <Upload className="w-12 h-12 text-neo-cyan/40 mx-auto mb-4" />
+                      <p className="text-sm font-bold uppercase tracking-widest text-neo-slate/60">Drag Artifact or <span className="text-neo-cyan">Manual Load</span></p>
+                      <p className="text-[10px] font-mono text-neo-slate/30 uppercase tracking-tighter">PDF / PPTX / Images / XLSX // MAX 50MB</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-mono font-bold text-neo-slate/40 uppercase tracking-widest ml-4">
+                    External Source (Canva/Drive)
+                  </label>
+                  <div className="relative">
+                    <Link2 className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-neo-cyan/40" />
+                    <input
+                      type="url"
+                      value={posterLink}
+                      onChange={(e) => setPosterLink(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full bg-neo-void/50 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-white font-mono text-sm focus:border-neo-cyan/40 outline-none transition-all"
+                    />
+                  </div>
+                  <p className="text-[10px] font-mono text-neo-slate/30 mt-2 px-4">
+                    Ensure link permissions are set to "Anyone with the link"
+                  </p>
+                </div>
+              </div>
+            )
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div className="space-y-2">
                 <label className="text-[10px] font-mono font-bold text-neo-slate/40 uppercase tracking-widest ml-4">
-                  {activeTab === 'poster' ? 'External Source (Canva/Drive)' : 'Transmission Link (YouTube/Google Drive)'}
+                  Transmission Link (YouTube/Google Drive)
                 </label>
                 <div className="relative">
                   <Link2 className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-neo-cyan/40" />
                   <input
                     type="url"
-                    value={externalLink}
-                    onChange={e => setExternalLink(e.target.value)}
+                    value={robotVideoLink}
+                    onChange={(e) => setRobotVideoLink(e.target.value)}
                     placeholder="https://..."
                     className="w-full bg-neo-void/50 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-white font-mono text-sm focus:border-neo-cyan/40 outline-none transition-all"
                   />
@@ -298,23 +499,149 @@ export default function Submit() {
                   Ensure link permissions are set to "Anyone with the link"
                 </p>
               </div>
+
+              <div className="space-y-6">
+                <div
+                  onDragOver={handleRobotDragOver}
+                  onDragLeave={handleRobotDragLeave}
+                  onDrop={handleRobotDrop}
+                  onClick={() => {
+                    robotSheetInputRef.current?.click();
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload scoring sheet file"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      robotSheetInputRef.current?.click();
+                    }
+                  }}
+                  className={`border-2 border-dashed rounded-[2rem] p-12 text-center cursor-pointer transition-all ${
+                    robotIsDragging
+                      ? 'border-neo-cyan bg-neo-cyan/5'
+                      : robotSheetFile
+                      ? 'border-neo-cyan bg-neo-cyan/10'
+                      : 'border-white/10 hover:border-neo-cyan/30'
+                  }`}
+                >
+                  <input
+                    ref={robotSheetInputRef}
+                    type="file"
+                    aria-label="Select scoring sheet file"
+                    onChange={(e) => {
+                      const selected = e.target.files?.[0];
+                      if (selected) validateRobotSheetFile(selected);
+                    }}
+                    className="hidden"
+                  />
+                  {robotSheetFile ? (
+                    <div className="flex flex-col items-center gap-4">
+                      <FileText className="w-12 h-12 text-neo-cyan" />
+                      <div>
+                        <div className="text-white font-bold mb-1">{robotSheetFile.name}</div>
+                        <div className="text-[10px] font-mono text-neo-slate/40 uppercase">{(robotSheetFile.size / 1024 / 1024).toFixed(2)} MB</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRobotSheetFile(null);
+                        }}
+                        className="text-neo-amber text-[10px] font-bold uppercase hover:underline"
+                      >
+                        Flush Buffer
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <Upload className="w-12 h-12 text-neo-cyan/40 mx-auto mb-4" />
+                      <p className="text-sm font-bold uppercase tracking-widest text-neo-slate/60">Drag Scoring Sheet or <span className="text-neo-cyan">Manual Load</span></p>
+                      <p className="text-[10px] font-mono text-neo-slate/30 uppercase tracking-tighter">PDF / PPTX / Images / XLSX // MAX 50MB</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono font-bold text-neo-slate/40 uppercase tracking-widest ml-4">Identifier Label (Filename)</label>
-            <input
-              type="text"
-              value={originalFilename}
-              onChange={e => setOriginalFilename(e.target.value)}
-              placeholder="Ex: TeamAlpha_School_..."
-              className="w-full bg-neo-void/50 border border-white/10 rounded-2xl py-5 px-6 text-white font-mono text-sm focus:border-neo-cyan/40 outline-none transition-all"
-            />
-          </div>
+          {activeTab === 'poster' ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono font-bold text-neo-slate/40 uppercase tracking-widest ml-4">Category</label>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setPosterCategory('Primary')}
+                    className={`flex-1 py-4 px-6 rounded-2xl font-heading font-bold uppercase tracking-widest transition-all ${
+                      posterCategory === 'Primary'
+                        ? 'bg-neo-cyan text-neo-void shadow-[0_0_20px_rgba(102,252,241,0.3)]'
+                        : 'bg-white/5 text-neo-slate/40 hover:text-white border border-white/10'
+                    }`}
+                  >
+                    Primary
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPosterCategory('Secondary')}
+                    className={`flex-1 py-4 px-6 rounded-2xl font-heading font-bold uppercase tracking-widest transition-all ${
+                      posterCategory === 'Secondary'
+                        ? 'bg-neo-cyan text-neo-void shadow-[0_0_20px_rgba(102,252,241,0.3)]'
+                        : 'bg-white/5 text-neo-slate/40 hover:text-white border border-white/10'
+                    }`}
+                  >
+                    Secondary
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono font-bold text-neo-slate/40 uppercase tracking-widest ml-4">Identifier Label (Filename)</label>
+                <input
+                  type="text"
+                  value={posterFilename}
+                  onChange={(e) => {
+                    setPosterFilename(e.target.value);
+                    setPosterFilenameTouched(true);
+                  }}
+                  placeholder={`${sanitizedTeamName}_${sanitizedSchoolName}_DeExtinction_${posterCategory}.pdf`}
+                  className="w-full bg-neo-void/50 border border-white/10 rounded-2xl py-5 px-6 text-white font-mono text-sm focus:border-neo-cyan/40 outline-none transition-all"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono font-bold text-neo-slate/40 uppercase tracking-widest ml-4">Run Video Filename</label>
+                <input
+                  type="text"
+                  value={robotVideoFilename}
+                  onChange={(e) => {
+                    setRobotVideoFilename(e.target.value);
+                    setRobotVideoFilenameTouched(true);
+                  }}
+                  placeholder="Ex: TeamAlpha_School_RunVideo"
+                  className="w-full bg-neo-void/50 border border-white/10 rounded-2xl py-5 px-6 text-white font-mono text-sm focus:border-neo-cyan/40 outline-none transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono font-bold text-neo-slate/40 uppercase tracking-widest ml-4">Scoring Sheet Filename</label>
+                <input
+                  type="text"
+                  value={robotSheetFilename}
+                  onChange={(e) => {
+                    setRobotSheetFilename(e.target.value);
+                    setRobotSheetFilenameTouched(true);
+                  }}
+                  placeholder="Ex: TeamAlpha_School_ScoringSheet"
+                  className="w-full bg-neo-void/50 border border-white/10 rounded-2xl py-5 px-6 text-white font-mono text-sm focus:border-neo-cyan/40 outline-none transition-all"
+                />
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"
-            disabled={loading || (submissionMethod === 'file' && !file) || (submissionMethod === 'link' && !externalLink) || !originalFilename}
+            disabled={loading || (activeTab === 'poster' ? (posterMethod === 'file' ? !posterFile : !posterLink) || !posterFilename : (!robotVideoLink || !robotSheetFile || !robotVideoFilename || !robotSheetFilename))}
             className={`w-full py-6 text-xl font-heading font-black uppercase tracking-widest group transition-all rounded-[1.5rem] flex items-center justify-center gap-4 ${
               activeTab === 'poster' 
                 ? 'btn-neo-cyan bg-neo-cyan text-neo-void hover:shadow-[0_0_30px_rgba(102,252,241,0.4)]' 

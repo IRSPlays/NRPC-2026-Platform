@@ -1,8 +1,10 @@
 node_modules
 dist
 backups
+uploads
 *.sqlite-journal
 *.sqlite-shm
 *.sqlite-wal
 .env
 .DS_Store
+nul

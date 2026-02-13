@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Calculator, RotateCcw, ShieldCheck, Terminal, Settings2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Calculator, RotateCcw, Terminal, Settings2 } from 'lucide-react';
 import MissionCard from '../components/calculator/MissionCard';
 import ScoreDisplay from '../components/calculator/ScoreDisplay';
 
@@ -29,13 +29,25 @@ const CalculatorPage: React.FC = () => {
   const [mission6, setMission6] = useState<Mission6State>({ nestOut: false, nestOnStump: false, nestFell: false });
   const [mission7, setMission7] = useState<Mission7State>({ active: false });
 
+  // Auto-update bonus states
+  useEffect(() => {
+    setMission2(prev => ({ ...prev, bothLaunched: prev.meatLaunched === 2 }));
+  }, [mission2.meatLaunched]);
+
+  useEffect(() => {
+    const allInBaseNow = mission4.fossils.every(f => f.inBase);
+    if (mission4.allInBase !== allInBaseNow) {
+      setMission4(prev => ({ ...prev, allInBase: allInBaseNow }));
+    }
+  }, [mission4.fossils]);
+
   const mission1Score = useMemo(() => mission1.rocksCollected * 5 + (mission1.rocksCollected === 5 ? 5 : 0), [mission1.rocksCollected]);
-  const mission2Score = useMemo(() => mission2.meatLaunched * 5 + (mission2.bothLaunched && mission2.meatLaunched === 2 ? 5 : 0), [mission2.meatLaunched, mission2.bothLaunched]);
+  const mission2Score = useMemo(() => mission2.meatLaunched * 5 + (mission2.meatLaunched === 2 ? 5 : 0), [mission2.meatLaunched]);
   const mission3Score = useMemo(() => mission3.bales.reduce((t, b) => t + (b.moved ? 5 : 0) + (b.inForest ? 5 : 0), 0), [mission3.bales]);
   const mission4Score = useMemo(() => {
     const base = mission4.fossils.reduce((t, f) => t + (f.pickedUp ? 2 : 0) + (f.inBase ? 3 : 0), 0);
-    return base + (mission4.allInBase && mission4.fossils.every(f => f.inBase) ? 5 : 0);
-  }, [mission4.fossils, mission4.allInBase]);
+    return base + (mission4.fossils.every(f => f.inBase) ? 5 : 0);
+  }, [mission4.fossils]);
   const mission5Score = useMemo(() => mission5.scientistFell ? 0 : mission5.scientistsInBase * 10, [mission5.scientistsInBase, mission5.scientistFell]);
   const mission6Score = useMemo(() => {
     if (mission6.nestFell) return 0;
@@ -127,12 +139,12 @@ const CalculatorPage: React.FC = () => {
                     <span className="text-[10px] font-mono text-neo-slate/40 uppercase">i. For each piece of meat successfully launched</span>
                     <span className="text-sm font-bold font-mono text-neo-cyan">5 PTS</span>
                   </div>
-                  <button onClick={() => setMission2({ ...mission2, bothLaunched: !mission2.bothLaunched })}
-                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${mission2.bothLaunched && mission2.meatLaunched === 2 ? 'bg-neo-cyan/10 border-neo-cyan/30 text-neo-cyan' : 'bg-neo-void/30 border-white/5 text-neo-slate/20'}`}
+                  <div
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${mission2.bothLaunched && mission2.meatLaunched === 2 ? 'bg-neo-cyan/10 border-neo-cyan/30 text-neo-cyan shadow-[0_0_10px_rgba(102,252,241,0.3)]' : 'bg-neo-void/30 border-white/5 text-neo-slate/20'}`}
                   >
-                    <span className="text-[10px] font-mono uppercase">ii. Both pieces successfully launched (EXTRA)</span>
-                    <span className="text-sm font-bold font-mono">5 PTS</span>
-                  </button>
+                  <span className="text-[10px] font-mono uppercase">ii. Both pieces successfully launched (EXTRA)</span>
+                    <span className="text-sm font-bold font-mono">5 PTS {mission2.meatLaunched === 2 && '✓'}</span>
+                </div>
                 </div>
               </div>
             </MissionCard>
@@ -180,12 +192,12 @@ const CalculatorPage: React.FC = () => {
                     <div className="text-xl font-black font-mono text-neo-cyan w-8 text-right">{(f.pickedUp ? 2 : 0) + (f.inBase ? 3 : 0)}</div>
                   </div>
                 ))}
-                <button onClick={() => setMission4({ ...mission4, allInBase: !mission4.allInBase })}
-                  className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${mission4.allInBase && mission4.fossils.every(f => f.inBase) ? 'bg-neo-cyan/10 border-neo-cyan/30 text-neo-cyan' : 'bg-neo-void/30 border-white/5 text-neo-slate/20'}`}
+                <div
+                  className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${mission4.allInBase && mission4.fossils.every(f => f.inBase) ? 'bg-neo-cyan/10 border-neo-cyan/30 text-neo-cyan shadow-[0_0_10px_rgba(102,252,241,0.3)]' : 'bg-neo-void/30 border-white/5 text-neo-slate/20'}`}
                 >
                   <span className="text-[10px] font-mono uppercase">iii. If all 3 fossils are fully inside base (EXTRA)</span>
-                  <span className="text-sm font-bold font-mono">5 PTS</span>
-                </button>
+                  <span className="text-sm font-bold font-mono">5 PTS {mission4.fossils.every(f => f.inBase) && '✓'}</span>
+                </div>
               </div>
             </MissionCard>
 

@@ -21,6 +21,7 @@ async function initDatabase() {
   // Enable WAL mode
   await db.run('PRAGMA journal_mode = WAL');
   await db.run('PRAGMA synchronous = NORMAL');
+  await db.run('PRAGMA foreign_keys = ON');
 
   // Create tables
   await db.run(`
@@ -98,6 +99,14 @@ async function initDatabase() {
     console.error('Migration error:', err);
   }
 
+  // Create indexes for foreign keys
+  try {
+    await db.run('CREATE INDEX IF NOT EXISTS idx_submissions_team_id ON submissions(team_id)');
+    await db.run('CREATE INDEX IF NOT EXISTS idx_scores_team_id ON scores(team_id)');
+  } catch (err) {
+    console.log('Indexes may already exist:', err.message);
+  }
+
   console.log('✓ Database initialized successfully');
   return db;
 }
@@ -157,39 +166,48 @@ export async function backupDatabase() {
 export async function restoreDatabase(backupData) {
   const database = await getDb();
 
-  await database.run('DELETE FROM scores');
-  await database.run('DELETE FROM submissions');
-  await database.run('DELETE FROM teams');
-  await database.run('DELETE FROM announcements');
+  try {
+    await database.run('BEGIN TRANSACTION');
 
-  for (const team of backupData.teams) {
-    await database.run(
-      'INSERT INTO teams (id, team_name, school_name, category, login_password, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [team.id, team.team_name, team.school_name, team.category, team.login_password, team.created_at]
-    );
-  }
+    await database.run('DELETE FROM scores');
+    await database.run('DELETE FROM submissions');
+    await database.run('DELETE FROM teams');
+    await database.run('DELETE FROM announcements');
 
-  for (const sub of backupData.submissions) {
-    await database.run(
-      'INSERT INTO submissions (id, team_id, submission_type, file_path, external_link, original_filename, submitted_at, concept_score, future_score, organization_score, aesthetics_score, assessed_by, assessed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [sub.id, sub.team_id, sub.submission_type, sub.file_path, sub.external_link, sub.original_filename, sub.submitted_at, sub.concept_score, sub.future_score, sub.organization_score, sub.aesthetics_score, sub.assessed_by, sub.assessed_at]
-    );
-  }
-
-  for (const score of backupData.scores) {
-    await database.run(
-      'INSERT INTO scores (id, team_id, judge_name, mission_data, mission1, mission2, mission3, mission4, mission5, mission6, mission7, total_score, completion_time_seconds, mechanical_design_score, judge_notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [score.id, score.team_id, score.judge_name, score.mission_data, score.mission1, score.mission2, score.mission3, score.mission4, score.mission5, score.mission6, score.mission7, score.total_score, score.completion_time_seconds, score.mechanical_design_score || 0, score.judge_notes, score.created_at]
-    );
-  }
-
-  if (backupData.announcements) {
-    for (const ann of backupData.announcements) {
+    for (const team of backupData.teams) {
       await database.run(
-        'INSERT INTO announcements (id, title, content, priority, is_pinned, is_active, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [ann.id, ann.title, ann.content, ann.priority, ann.is_pinned ? 1 : 0, ann.is_active ? 1 : 0, ann.expires_at, ann.created_at]
+        'INSERT INTO teams (id, team_name, school_name, category, login_password, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [team.id, team.team_name, team.school_name, team.category, team.login_password, team.created_at]
       );
     }
+
+    for (const sub of backupData.submissions) {
+      await database.run(
+        'INSERT INTO submissions (id, team_id, submission_type, file_path, external_link, original_filename, submitted_at, concept_score, future_score, organization_score, aesthetics_score, assessed_by, assessed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [sub.id, sub.team_id, sub.submission_type, sub.file_path, sub.external_link, sub.original_filename, sub.submitted_at, sub.concept_score, sub.future_score, sub.organization_score, sub.aesthetics_score, sub.assessed_by, sub.assessed_at]
+      );
+    }
+
+    for (const score of backupData.scores) {
+      await database.run(
+        'INSERT INTO scores (id, team_id, judge_name, mission_data, mission1, mission2, mission3, mission4, mission5, mission6, mission7, total_score, completion_time_seconds, mechanical_design_score, judge_notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [score.id, score.team_id, score.judge_name, score.mission_data, score.mission1, score.mission2, score.mission3, score.mission4, score.mission5, score.mission6, score.mission7, score.total_score, score.completion_time_seconds, score.mechanical_design_score || 0, score.judge_notes || null, score.created_at]
+      );
+    }
+
+    if (backupData.announcements) {
+      for (const ann of backupData.announcements) {
+        await database.run(
+          'INSERT INTO announcements (id, title, content, priority, is_pinned, is_active, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [ann.id, ann.title, ann.content, ann.priority, ann.is_pinned ? 1 : 0, ann.is_active ? 1 : 0, ann.expires_at, ann.created_at]
+        );
+      }
+    }
+
+    await database.run('COMMIT');
+  } catch (err) {
+    await database.run('ROLLBACK');
+    throw err;
   }
 }
 

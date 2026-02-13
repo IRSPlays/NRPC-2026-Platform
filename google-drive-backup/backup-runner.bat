@@ -10,9 +10,11 @@ echo ============================================
 echo.
 
 REM Configuration
-set BACKUP_INTERVAL=300000  REM 5 minutes in milliseconds
+REM 5 minutes in milliseconds
+set BACKUP_INTERVAL=300000
 set MAX_RETRIES=3
-set RETRY_DELAY=5000       REM 5 seconds between retries
+REM 5 seconds between retries
+set RETRY_DELAY=5000
 set LOG_FILE=logs\backup-runner.log
 
 REM Create logs directory if not exists

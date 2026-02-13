@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LayoutDashboard, Users, FileText, Calculator, Trophy, Database, LogOut, Megaphone, Terminal } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Calculator, Trophy, Database, LogOut, Megaphone, Terminal, Video } from 'lucide-react';
 
 export default function Admin() {
   const { isAdmin, isJudge, logout } = useAuth();
@@ -18,6 +18,7 @@ export default function Admin() {
     { path: '/admin/announcements', label: 'Broadcasts', icon: Megaphone, adminOnly: true },
     { path: '/admin/teams', label: 'Team.DB', icon: Users, adminOnly: true },
     { path: '/admin/submissions', label: 'Uplink.Logs', icon: FileText, adminOnly: false },
+    { path: '/admin/robot-performance', label: 'Perf.Logs', icon: Video, adminOnly: false },
     { path: '/admin/scoring', label: 'Calc.Engine', icon: Calculator, adminOnly: false },
     { path: '/admin/leaderboard', label: 'Rank.Table', icon: Trophy, adminOnly: false },
     { path: '/admin/backup', label: 'Archive.Sys', icon: Database, adminOnly: true },

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Upload, FileText, Clock, Activity, Target, ExternalLink, Eye, Users, Radio } from 'lucide-react';
+import { Trophy, Upload, FileText, Activity, Target, ExternalLink, Eye, Users, Radio } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { scoresAPI, submissionsAPI, getFileUrl } from '../lib/api';
 import { Score, Submission } from '../types';
@@ -12,7 +12,7 @@ export default function TeamDashboard() {
   const [scores, setScores] = useState<Score[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     if (!isTeam) {
@@ -20,7 +20,7 @@ export default function TeamDashboard() {
       return;
     }
     loadData();
-  }, [isTeam, teamId]);
+  }, [isTeam, teamId, navigate]);
 
   const loadData = async () => {
     if (!teamId) return;
@@ -32,8 +32,9 @@ export default function TeamDashboard() {
       ]);
       setScores(scoresData);
       setSubmissions(submissionsData);
+      setErrorMsg('');
     } catch (err: any) {
-      setError(err.message || 'Failed to load team data');
+      setErrorMsg(err.message || 'Failed to load team data');
     } finally {
       setLoading(false);
     }

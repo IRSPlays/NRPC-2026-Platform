@@ -37,11 +37,7 @@ export interface MissionData {
     bonus: boolean;
   };
   mission5: {
-    river: boolean;
-    forest: boolean;
-    fossil_pit: boolean;
-    base: boolean;
-    base_last: boolean;
+    scientists_in_base: number;
     researcher_toppled: boolean;
   };
   mission6: {
@@ -72,7 +68,7 @@ export interface ScoreCalculation {
 export interface Submission {
   id: number;
   team_id: number;
-  submission_type: 'file' | 'link';
+  submission_type: 'file' | 'link' | 'robot_run';
   file_path?: string;
   external_link?: string;
   original_filename: string;
@@ -81,6 +77,8 @@ export interface Submission {
   future_score?: number;
   organization_score?: number;
   aesthetics_score?: number;
+  assessed_by?: string;
+  assessed_at?: string;
   team_name?: string;
   school_name?: string;
 }
@@ -99,6 +97,7 @@ export interface Score {
   mission7: number;
   total_score: number;
   completion_time_seconds: number;
+  mechanical_design_score?: number;
   judge_notes?: string;
   created_at: string;
   team_name?: string;
@@ -117,8 +116,8 @@ export interface Announcement {
   title: string;
   content: string;
   priority: 'low' | 'medium' | 'high';
-  is_pinned: number;
-  is_active?: number;
+  is_pinned: boolean;
+  is_active?: boolean;
   created_at: string;
   expires_at?: string;
 }

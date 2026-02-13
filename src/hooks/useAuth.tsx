@@ -33,6 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsJudge(status.isJudge);
       setIsTeam(!!status.teamId);
       setTeamId(status.teamId);
+      if (status.teamName) {
+        setTeamName(status.teamName);
+      }
     } catch (_) {
       setIsAdmin(false);
       setIsJudge(false);

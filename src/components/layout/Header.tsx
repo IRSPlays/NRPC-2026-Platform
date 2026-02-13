@@ -131,6 +131,9 @@ export default function Header() {
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="lg:hidden p-2 rounded-xl bg-neo-cyan/10 border border-neo-cyan/30 text-neo-cyan"
+              aria-expanded={isMenuOpen}
+              aria-controls="mobile-menu"
+              aria-label="Toggle menu"
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -138,7 +141,7 @@ export default function Header() {
 
           {/* Mobile Navigation Drawer */}
           {isMenuOpen && (
-            <div className="absolute top-20 left-0 right-0 p-4 lg:hidden animate-fade-in">
+            <div id="mobile-menu" className="absolute top-20 left-0 right-0 p-4 lg:hidden animate-fade-in">
               <nav className="neo-glass rounded-2xl border-neo-cyan/30 p-6 flex flex-col gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                 <NavLinks />
                 {(isAdmin || isJudge || isTeam) && (

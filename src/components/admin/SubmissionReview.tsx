@@ -11,7 +11,13 @@ export default function SubmissionReview() {
   const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
 
   // Scoring form state
-  const [scores, setScores] = useState({
+  const [scores, setScores] = useState<{
+    concept_score: number;
+    future_score: number;
+    organization_score: number;
+    aesthetics_score: number;
+    assessed_by: string;
+  }>({
     concept_score: 0,
     future_score: 0,
     organization_score: 0,
@@ -28,8 +34,8 @@ export default function SubmissionReview() {
       setLoading(true);
       const data = await submissionsAPI.getAll();
       setSubmissions(data);
-    } catch (err) {
-      setError('Failed to fetch submissions');
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch submissions');
     } finally {
       setLoading(false);
     }
@@ -127,21 +133,21 @@ export default function SubmissionReview() {
 
               <div className="grid gap-6">
                 {[
-                  { label: 'Core Concept (40)', key: 'concept_score', max: 40 },
-                  { label: 'Future Innovation (30)', key: 'future_score', max: 30 },
-                  { label: 'Logic/Organization (20)', key: 'organization_score', max: 20 },
-                  { label: 'Visual Aesthetic (10)', key: 'aesthetics_score', max: 10 },
+                  { label: 'Core Concept (40)', key: 'concept_score' as const, max: 40 },
+                  { label: 'Future Innovation (30)', key: 'future_score' as const, max: 30 },
+                  { label: 'Logic/Organization (20)', key: 'organization_score' as const, max: 20 },
+                  { label: 'Visual Aesthetic (10)', key: 'aesthetics_score' as const, max: 10 },
                 ].map(item => (
                   <div key={item.key} className="space-y-2">
                     <div className="flex justify-between items-center px-4">
                       <label className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest">{item.label}</label>
-                      <span className="text-sm font-mono font-bold text-neo-cyan">{(scores as any)[item.key]}</span>
+                      <span className="text-sm font-mono font-bold text-neo-cyan">{scores[item.key]}</span>
                     </div>
                     <input
                       type="range"
                       min="0"
                       max={item.max}
-                      value={(scores as any)[item.key]}
+                      value={scores[item.key]}
                       onChange={e => setScores({ ...scores, [item.key]: parseInt(e.target.value) })}
                       className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-neo-cyan"
                     />
@@ -218,7 +224,12 @@ export default function SubmissionReview() {
                       )}
                     </td>
                     <td className="px-8 py-6 text-center font-mono font-bold text-white">
-                      {sub.concept_score ? (sub.concept_score + sub.future_score! + sub.organization_score! + sub.aesthetics_score!) : '--'}
+                      {sub.concept_score ? (
+                        (sub.concept_score || 0) + 
+                        (sub.future_score || 0) + 
+                        (sub.organization_score || 0) + 
+                        (sub.aesthetics_score || 0)
+                      ) : '--'}
                     </td>
                     <td className="px-8 py-6 text-right">
                       <button 

@@ -14,6 +14,7 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import AnnouncementsManager from './components/admin/AnnouncementsManager';
 import TeamManager from './components/admin/TeamManager';
 import SubmissionReview from './components/admin/SubmissionReview';
+import RobotPerformanceReview from './components/admin/RobotPerformanceReview';
 import ScoreManager from './components/admin/ScoreManager';
 import Leaderboard from './components/admin/Leaderboard';
 import BackupManager from './components/admin/BackupManager';
@@ -52,6 +53,7 @@ function App() {
               <Route path="announcements" element={<AnnouncementsManager />} />
               <Route path="teams" element={<TeamManager />} />
               <Route path="submissions" element={<SubmissionReview />} />
+              <Route path="robot-performance" element={<RobotPerformanceReview />} />
               <Route path="scoring" element={<ScoreManager />} />
               <Route path="leaderboard" element={<Leaderboard />} />
               <Route path="backup" element={<BackupManager />} />

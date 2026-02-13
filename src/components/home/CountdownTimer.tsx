@@ -34,7 +34,7 @@ const TimeSection = ({ value, label, colorClass, digitsCount = 2 }: { value: num
   const digits = valString.split('');
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center" aria-live="polite" aria-label={label} role="status">
       <div className={`flex font-heading font-black tracking-tighter text-4xl sm:text-6xl md:text-8xl lg:text-9xl ${colorClass} h-[1em] overflow-hidden`}>
         {digits.map((d, i) => (
           <Digit key={i} value={d} />
@@ -53,6 +53,11 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
 
   useEffect(() => {
     const target = new Date(targetDate).getTime();
+    if (Number.isNaN(target)) {
+      setIsExpired(true);
+      setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      return;
+    }
 
     const updateCountdown = () => {
       const now = Date.now();

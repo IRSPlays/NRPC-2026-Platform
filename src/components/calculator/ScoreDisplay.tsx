@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Trophy, Clock, AlertCircle, Activity, Zap } from 'lucide-react';
+import { Clock, AlertCircle, Activity, Zap } from 'lucide-react';
 
 interface ScoreDisplayProps {
   totalScore: number;
@@ -16,12 +16,14 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
 }) => {
   const [displayScore, setDisplayScore] = useState(totalScore);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(false);
 
+  // Initialize isMobile only on client-side to avoid SSR issues
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   useEffect(() => {
@@ -33,7 +35,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [totalScore, displayScore]);
+  }, [totalScore]);
 
   const percentage = Math.round((totalScore / maxScore) * 100);
   const circumference = 2 * Math.PI * 80;
@@ -72,7 +74,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
             r={isMobile ? 60 : 80}
             fill="none"
             stroke="currentColor"
-            strokeWidth="6 md:strokeWidth-8"
+            strokeWidth={isMobile ? 6 : 8}
             strokeLinecap="round"
             className={`text-neo-cyan transition-all duration-700 ease-out ${isAnimating ? 'opacity-50' : ''}`}
             strokeDasharray={circumference}

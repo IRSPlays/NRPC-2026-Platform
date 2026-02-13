@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Database, Download, Upload, AlertCircle, CheckCircle2, RefreshCw, History, FileArchive, HardDrive, Cpu, ShieldAlert, Zap } from 'lucide-react';
+import { Database, Download, Upload, CheckCircle2, RefreshCw, History, FileArchive, HardDrive, ShieldAlert, Zap } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { backupAPI } from '../../lib/api';
 import { BackupFile } from '../../types';
@@ -190,7 +190,7 @@ export default function BackupManager() {
           <div className="space-y-4">
             <input
               type="file"
-              accept=".json"
+              accept="application/json,.json"
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
               className="w-full bg-neo-void/50 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-xs outline-none focus:border-neo-amber/40"
             />

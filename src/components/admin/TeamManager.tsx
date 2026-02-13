@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Users, Plus, Trash2, Edit2, AlertCircle, CheckCircle2, Shield, Search, X } from 'lucide-react';
-import { teamsAPI, Team } from '../../lib/api';
+import { Users, Plus, Trash2, Edit2, AlertCircle, CheckCircle2, Search, X } from 'lucide-react';
+import { teamsAPI } from '../../lib/api';
+import type { Team } from '../../types';
 
 export default function TeamManager() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -131,7 +132,7 @@ export default function TeamManager() {
                 <label className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest ml-4">Category</label>
                 <select
                   value={formData.category}
-                  onChange={e => setFormData({ ...formData, category: e.target.value as any })}
+                  onChange={e => setFormData({ ...formData, category: e.target.value as 'Primary' | 'Secondary' })}
                   className="w-full bg-neo-void/50 border border-white/10 rounded-2xl py-4 px-6 text-white outline-none focus:border-neo-cyan/40 appearance-none"
                 >
                   <option value="Primary">Primary</option>
@@ -165,10 +166,10 @@ export default function TeamManager() {
             <table className="w-full">
               <thead>
                 <tr className="bg-white/5 border-b border-white/5">
-                  <th className="px-8 py-4 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Unit ID</th>
-                  <th className="px-8 py-4 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Team / School</th>
-                  <th className="px-8 py-4 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Category</th>
-                  <th className="px-8 py-4 text-right text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Actions</th>
+                  <th scope="col" className="px-8 py-4 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Unit ID</th>
+                  <th scope="col" className="px-8 py-4 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Team / School</th>
+                  <th scope="col" className="px-8 py-4 text-left text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Category</th>
+                  <th scope="col" className="px-8 py-4 text-right text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.2em]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -187,10 +188,10 @@ export default function TeamManager() {
                       </span>
                     </td>
                     <td className="px-8 py-6 text-right space-x-2">
-                      <button onClick={() => handleEdit(team)} className="p-2 bg-white/5 rounded-lg hover:bg-neo-cyan/10 hover:text-neo-cyan transition-all">
+                      <button onClick={() => handleEdit(team)} aria-label={`Edit ${team.team_name}`} className="p-2 bg-white/5 rounded-lg hover:bg-neo-cyan/10 hover:text-neo-cyan transition-all">
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(team.id)} className="p-2 bg-white/5 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-all">
+                      <button onClick={() => handleDelete(team.id)} aria-label={`Delete ${team.team_name}`} className="p-2 bg-white/5 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-all">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>

@@ -7,6 +7,7 @@ import fs from 'fs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
+import jwt from 'jsonwebtoken';
 import { getDb, backupDatabase, restoreDatabase } from './database.js';
 import { calculateTotalScore, calculateRankings, calculateChampionshipRankings } from './scoring.js';
 
@@ -19,13 +20,28 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // Security Middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable CSP for easier development, enable in full production
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      scriptSrc: ["'self'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+    },
+  },
 }));
 
 // Rate Limiting
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 500, // Limit each IP to 500 requests per window
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+
+const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
   message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
 });
 
@@ -36,8 +52,18 @@ const authLimiter = rateLimit({
 });
 
 // Middleware
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
 app.use(cors({
-  origin: true,
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -77,23 +103,74 @@ app.use('/uploads', (req, res, next) => {
 // Auth passwords from env (defaults for dev)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'NRPCTeam2026';
 const TEAM_PASSWORD = process.env.TEAM_PASSWORD || 'NRPC2026Teams';
-const JUDGE_PASSWORD = process.env.JUDGE_PASSWORD || 'NRPC2026Teams';
+const JUDGE_PASSWORD = process.env.JUDGE_PASSWORD || 'NRPC2026Judges';
+const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
+
+// JWT token generation
+function generateToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
+}
+
+function verifyToken(token) {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    return null;
+  }
+}
 
 // Auth middleware
 const requireAdmin = async (req, res, next) => {
-  const auth = req.cookies.admin_auth;
-  if (auth !== ADMIN_PASSWORD) {
+  const token = req.cookies.admin_auth;
+  if (!token) {
     return res.status(401).json({ error: 'Admin authentication required' });
   }
+  
+  const decoded = verifyToken(token);
+  if (!decoded || decoded.type !== 'admin') {
+    return res.status(401).json({ error: 'Invalid or expired admin token' });
+  }
+  
+  req.user = decoded;
   next();
 };
 
 const requireJudge = async (req, res, next) => {
-  const auth = req.cookies.judge_auth;
-  if (auth !== JUDGE_PASSWORD) {
+  const token = req.cookies.judge_auth;
+  if (!token) {
     return res.status(401).json({ error: 'Judge authentication required' });
   }
+  
+  const decoded = verifyToken(token);
+  if (!decoded || decoded.type !== 'judge') {
+    return res.status(401).json({ error: 'Invalid or expired judge token' });
+  }
+  
+  req.user = decoded;
   next();
+};
+
+const requireAdminOrJudge = async (req, res, next) => {
+  const adminToken = req.cookies.admin_auth;
+  const judgeToken = req.cookies.judge_auth;
+  
+  if (adminToken) {
+    const decoded = verifyToken(adminToken);
+    if (decoded && decoded.type === 'admin') {
+      req.user = decoded;
+      return next();
+    }
+  }
+  
+  if (judgeToken) {
+    const decoded = verifyToken(judgeToken);
+    if (decoded && decoded.type === 'judge') {
+      req.user = decoded;
+      return next();
+    }
+  }
+  
+  return res.status(401).json({ error: 'Admin or Judge authentication required' });
 };
 
 // File upload setup
@@ -132,14 +209,15 @@ const COOKIE_OPTIONS = {
   httpOnly: true,
   maxAge: 8 * 60 * 60 * 1000, // 8 hours
   secure: isProd,
-  sameSite: 'strict'
+  sameSite: isProd ? 'strict' : 'lax'
 };
 
 // Admin login
 app.post('/api/auth/admin', authLimiter, (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASSWORD) {
-    res.cookie('admin_auth', ADMIN_PASSWORD, COOKIE_OPTIONS);
+    const token = generateToken({ type: 'admin', timestamp: Date.now() });
+    res.cookie('admin_auth', token, COOKIE_OPTIONS);
     res.json({ success: true });
   } else {
     res.status(401).json({ error: 'Invalid password' });
@@ -150,7 +228,8 @@ app.post('/api/auth/admin', authLimiter, (req, res) => {
 app.post('/api/auth/judge', authLimiter, (req, res) => {
   const { password } = req.body;
   if (password === JUDGE_PASSWORD) {
-    res.cookie('judge_auth', JUDGE_PASSWORD, COOKIE_OPTIONS);
+    const token = generateToken({ type: 'judge', timestamp: Date.now() });
+    res.cookie('judge_auth', token, COOKIE_OPTIONS);
     res.json({ success: true });
   } else {
     res.status(401).json({ error: 'Invalid password' });
@@ -160,6 +239,10 @@ app.post('/api/auth/judge', authLimiter, (req, res) => {
 // Team login
 app.post('/api/auth/team', authLimiter, async (req, res) => {
   const { teamId, password } = req.body;
+
+  if (!teamId || typeof teamId !== 'number' && typeof teamId !== 'string') {
+    return res.status(400).json({ error: 'Invalid team id' });
+  }
   
   if (password !== TEAM_PASSWORD) {
     return res.status(401).json({ error: 'Invalid password' });
@@ -171,7 +254,8 @@ app.post('/api/auth/team', authLimiter, async (req, res) => {
     return res.status(404).json({ error: 'Team not found' });
   }
   
-  res.cookie('team_id', teamId, COOKIE_OPTIONS);
+  const token = generateToken({ type: 'team', teamId: team.id, teamName: team.team_name, timestamp: Date.now() });
+  res.cookie('team_auth', token, COOKIE_OPTIONS);
   
   res.json({ 
     success: true, 
@@ -187,23 +271,28 @@ app.post('/api/auth/team', authLimiter, async (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
   res.clearCookie('admin_auth');
   res.clearCookie('judge_auth');
-  res.clearCookie('team_id');
+  res.clearCookie('team_auth');
   res.json({ success: true });
 });
 
 // Check auth status
 app.get('/api/auth/status', (req, res) => {
+  const adminToken = verifyToken(req.cookies.admin_auth);
+  const judgeToken = verifyToken(req.cookies.judge_auth);
+  const teamToken = verifyToken(req.cookies.team_auth);
+  
   res.json({
-    isAdmin: req.cookies.admin_auth === ADMIN_PASSWORD,
-    isJudge: req.cookies.judge_auth === JUDGE_PASSWORD,
-    teamId: req.cookies.team_id || null
+    isAdmin: !!adminToken && adminToken.type === 'admin',
+    isJudge: !!judgeToken && judgeToken.type === 'judge',
+    teamId: teamToken?.teamId || null,
+    teamName: teamToken?.teamName || null
   });
 });
 
 // ===== TEAM ROUTES =====
 
 // Get all teams (public for calculator)
-app.get('/api/teams', async (req, res) => {
+app.get('/api/teams', publicLimiter, async (req, res) => {
   try {
     const db = await getDb();
     const teams = await db.all('SELECT id, team_name, school_name, category FROM teams ORDER BY team_name');
@@ -219,6 +308,14 @@ app.post('/api/teams', requireAdmin, async (req, res) => {
   
   if (!team_name || !school_name || !category) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  if (typeof team_name !== 'string' || typeof school_name !== 'string') {
+    return res.status(400).json({ error: 'Invalid team or school name' });
+  }
+
+  if (!['Primary', 'Secondary'].includes(category)) {
+    return res.status(400).json({ error: 'Invalid category' });
   }
   
   try {
@@ -250,14 +347,30 @@ app.post('/api/teams', requireAdmin, async (req, res) => {
 app.put('/api/teams/:id', requireAdmin, async (req, res) => {
   const { team_name, school_name, category } = req.body;
   const { id } = req.params;
+
+  if (!team_name || !school_name || !category) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  if (typeof team_name !== 'string' || typeof school_name !== 'string') {
+    return res.status(400).json({ error: 'Invalid team or school name' });
+  }
+
+  if (!['Primary', 'Secondary'].includes(category)) {
+    return res.status(400).json({ error: 'Invalid category' });
+  }
   
   try {
     const db = await getDb();
-    await db.run(
+    const result = await db.run(
       'UPDATE teams SET team_name = ?, school_name = ?, category = ? WHERE id = ?',
       [team_name, school_name, category, id]
     );
-    
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -270,12 +383,22 @@ app.delete('/api/teams/:id', requireAdmin, async (req, res) => {
   
   try {
     const db = await getDb();
-    // Cascade delete submissions and scores
-    await db.run('DELETE FROM submissions WHERE team_id = ?', [id]);
-    await db.run('DELETE FROM scores WHERE team_id = ?', [id]);
-    await db.run('DELETE FROM teams WHERE id = ?', [id]);
-    
-    res.json({ success: true });
+    // Cascade delete submissions and scores within a transaction
+    await db.run('BEGIN TRANSACTION');
+    try {
+      await db.run('DELETE FROM submissions WHERE team_id = ?', [id]);
+      await db.run('DELETE FROM scores WHERE team_id = ?', [id]);
+      const result = await db.run('DELETE FROM teams WHERE id = ?', [id]);
+      if (result.changes === 0) {
+        await db.run('ROLLBACK');
+        return res.status(404).json({ error: 'Team not found' });
+      }
+      await db.run('COMMIT');
+      res.json({ success: true });
+    } catch (err) {
+      await db.run('ROLLBACK');
+      throw err;
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -288,7 +411,12 @@ app.get('/api/submissions', async (req, res) => {
   const { teamId } = req.query;
   
   // Admin sees all, team sees only theirs
-  if (req.cookies.admin_auth !== ADMIN_PASSWORD && req.cookies.team_id !== teamId) {
+  const adminToken = verifyToken(req.cookies.admin_auth);
+  const teamToken = verifyToken(req.cookies.team_auth);
+  const isAdmin = !!adminToken && adminToken.type === 'admin';
+  const isTeam = !!teamToken && teamToken.type === 'team';
+  
+  if (!isAdmin && (!isTeam || String(teamToken.teamId) !== String(teamId))) {
     return res.status(403).json({ error: 'Unauthorized' });
   }
   
@@ -324,7 +452,8 @@ app.post('/api/submissions/file', upload.single('file'), async (req, res) => {
   const { team_id, original_filename, submission_type } = req.body;
   
   // Verify team is logged in
-  if (req.cookies.team_id !== team_id) {
+  const teamToken = verifyToken(req.cookies.team_auth);
+  if (!teamToken || teamToken.type !== 'team' || teamToken.teamId != team_id) {
     if (req.file) fs.unlinkSync(req.file.path);
     return res.status(403).json({ error: 'Unauthorized' });
   }
@@ -337,9 +466,10 @@ app.post('/api/submissions/file', upload.single('file'), async (req, res) => {
 
   try {
     const db = await getDb();
+    const filePath = `uploads/${req.file.filename}`;
     const result = await db.run(
       'INSERT INTO submissions (team_id, submission_type, file_path, original_filename) VALUES (?, ?, ?, ?)',
-      [team_id, type, req.file.filename, original_filename]
+      [team_id, type, filePath, original_filename]
     );
     
     res.json({ 
@@ -348,7 +478,7 @@ app.post('/api/submissions/file', upload.single('file'), async (req, res) => {
         id: result.lastID,
         team_id,
         submission_type: type,
-        file_path: req.file.filename,
+        file_path: filePath,
         original_filename
       } 
     });
@@ -363,7 +493,8 @@ app.post('/api/submissions/link', async (req, res) => {
   const { team_id, external_link, original_filename, submission_type } = req.body;
   
   // Verify team is logged in
-  if (req.cookies.team_id !== team_id) {
+  const teamToken = verifyToken(req.cookies.team_auth);
+  if (!teamToken || teamToken.type !== 'team' || teamToken.teamId != team_id) {
     return res.status(403).json({ error: 'Unauthorized' });
   }
   
@@ -399,13 +530,30 @@ app.post('/api/submissions/link', async (req, res) => {
 app.put('/api/submissions/:id/score', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { concept_score, future_score, organization_score, aesthetics_score, assessed_by } = req.body;
+
+  const scores = [concept_score, future_score, organization_score, aesthetics_score];
+  if (scores.some((s) => typeof s !== 'number' || s < 0)) {
+    return res.status(400).json({ error: 'Invalid score values' });
+  }
+
+  if (concept_score > 40 || future_score > 30 || organization_score > 20 || aesthetics_score > 10) {
+    return res.status(400).json({ error: 'Score values out of range' });
+  }
+
+  if (!assessed_by || typeof assessed_by !== 'string') {
+    return res.status(400).json({ error: 'Assessed by is required' });
+  }
   
   try {
     const db = await getDb();
-    await db.run(
+    const result = await db.run(
       'UPDATE submissions SET concept_score = ?, future_score = ?, organization_score = ?, aesthetics_score = ?, assessed_by = ?, assessed_at = CURRENT_TIMESTAMP WHERE id = ?',
       [concept_score, future_score, organization_score, aesthetics_score, assessed_by, id]
     );
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
     
     res.json({ success: true });
   } catch (err) {
@@ -416,20 +564,70 @@ app.put('/api/submissions/:id/score', requireAdmin, async (req, res) => {
 // ===== SCORE ROUTES =====
 
 // Calculate score (public - no save)
-app.post('/api/scores/calculate', async (req, res) => {
+app.post('/api/scores/calculate', publicLimiter, async (req, res) => {
   const { missionData } = req.body;
+  if (!missionData) {
+    return res.status(400).json({ error: 'missionData is required' });
+  }
   const result = calculateTotalScore(missionData);
   res.json(result);
 });
 
-// Save score (judge only)
-app.post('/api/scores', requireJudge, async (req, res) => {
+// Save score (judge or admin)
+app.post('/api/scores', requireAdminOrJudge, async (req, res) => {
   const { team_id, judge_name, missionData, completion_time_seconds, mechanical_design_score, judge_notes } = req.body;
+
+  if (!team_id || !judge_name || !missionData) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  if (typeof team_id !== 'number' && typeof team_id !== 'string') {
+    return res.status(400).json({ error: 'Invalid team id' });
+  }
+
+  if (typeof judge_name !== 'string' || judge_name.trim().length === 0) {
+    return res.status(400).json({ error: 'Invalid judge name' });
+  }
+
+  if (completion_time_seconds && typeof completion_time_seconds !== 'number') {
+    return res.status(400).json({ error: 'Invalid completion time' });
+  }
+
+  if (mechanical_design_score && typeof mechanical_design_score !== 'number') {
+    return res.status(400).json({ error: 'Invalid mechanical design score' });
+  }
+  
+  // Validate time range (0-300 seconds)
+  if (completion_time_seconds !== undefined) {
+    if (typeof completion_time_seconds !== 'number' || completion_time_seconds < 0 || completion_time_seconds > 300) {
+      return res.status(400).json({ error: 'Completion time must be between 0 and 300 seconds' });
+    }
+  }
+  
+  // Validate mech score range (0-100)
+  if (mechanical_design_score !== undefined) {
+    if (typeof mechanical_design_score !== 'number' || mechanical_design_score < 0 || mechanical_design_score > 100) {
+      return res.status(400).json({ error: 'Mechanical design score must be between 0 and 100' });
+    }
+  }
   
   const result = calculateTotalScore(missionData);
+  const totalWithMech = result.total + (mechanical_design_score || 0);
+  
+  // Max score validation: 155 (missions) + 100 (mech) = 255
+  if (totalWithMech > 255) {
+    return res.status(400).json({ error: 'Score exceeds maximum possible (255)' });
+  }
   
   try {
     const db = await getDb();
+    
+    // Validate team exists
+    const team = await db.get('SELECT id FROM teams WHERE id = ?', [team_id]);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+    
     const scoreResult = await db.run(
       'INSERT INTO scores (team_id, judge_name, mission_data, mission1, mission2, mission3, mission4, mission5, mission6, mission7, total_score, completion_time_seconds, mechanical_design_score, judge_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
@@ -443,7 +641,6 @@ app.post('/api/scores', requireJudge, async (req, res) => {
         result.missions[4].score,
         result.missions[5].score,
         result.missions[6].score,
-        result.missions[7] ? result.missions[7].score : 0, // Ensure mission 7 doesn't break if logic changes
         result.total,
         completion_time_seconds,
         mechanical_design_score || 0,
@@ -456,8 +653,144 @@ app.post('/api/scores', requireJudge, async (req, res) => {
       score: {
         id: scoreResult.lastID,
         ...result,
+        team_id,
+        judge_name,
         completion_time_seconds,
-        mechanical_design_score
+        mechanical_design_score: mechanical_design_score || 0,
+        judge_notes
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get single score by ID (admin/judge)
+app.get('/api/scores/:id', requireAdminOrJudge, async (req, res) => {
+  const { id } = req.params;
+  
+  if (!/^[0-9]+$/.test(id)) {
+    return res.status(400).json({ error: 'Invalid score id' });
+  }
+  
+  try {
+    const db = await getDb();
+    const score = await db.get(`
+      SELECT s.*, t.team_name, t.school_name
+      FROM scores s
+      JOIN teams t ON s.team_id = t.id
+      WHERE s.id = ?
+    `, [id]);
+    
+    if (!score) {
+      return res.status(404).json({ error: 'Score not found' });
+    }
+    
+    res.json(score);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update score (admin or own judge)
+app.put('/api/scores/:id', requireAdminOrJudge, async (req, res) => {
+  const { id } = req.params;
+  const { team_id, judge_name, missionData, completion_time_seconds, mechanical_design_score, judge_notes } = req.body;
+  
+  if (!/^[0-9]+$/.test(id)) {
+    return res.status(400).json({ error: 'Invalid score id' });
+  }
+  
+  if (!team_id || !judge_name || !missionData) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  
+  if (typeof team_id !== 'number' && typeof team_id !== 'string') {
+    return res.status(400).json({ error: 'Invalid team id' });
+  }
+  
+  if (typeof judge_name !== 'string' || judge_name.trim().length === 0) {
+    return res.status(400).json({ error: 'Invalid judge name' });
+  }
+  
+  // Validate time range (0-300 seconds)
+  if (completion_time_seconds !== undefined) {
+    if (typeof completion_time_seconds !== 'number' || completion_time_seconds < 0 || completion_time_seconds > 300) {
+      return res.status(400).json({ error: 'Completion time must be between 0 and 300 seconds' });
+    }
+  }
+  
+  if (mechanical_design_score !== undefined) {
+    if (typeof mechanical_design_score !== 'number' || mechanical_design_score < 0 || mechanical_design_score > 100) {
+      return res.status(400).json({ error: 'Mechanical design score must be between 0 and 100' });
+    }
+  }
+  
+  try {
+    const db = await getDb();
+    
+    // Check if score exists
+    const existingScore = await db.get('SELECT * FROM scores WHERE id = ?', [id]);
+    if (!existingScore) {
+      return res.status(404).json({ error: 'Score not found' });
+    }
+    
+    // Check if team exists
+    const team = await db.get('SELECT id FROM teams WHERE id = ?', [team_id]);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+    
+    // Judges can only edit their own scores
+    const adminToken = verifyToken(req.cookies.admin_auth);
+    const isAdmin = !!adminToken && adminToken.type === 'admin';
+    if (!isAdmin && existingScore.judge_name !== judge_name) {
+      return res.status(403).json({ error: 'You can only edit your own scores' });
+    }
+    
+    const result = calculateTotalScore(missionData);
+    const totalWithMech = result.total + (mechanical_design_score || 0);
+    
+    // Max score validation: 155 (missions) + 100 (mech) = 255
+    if (totalWithMech > 255) {
+      return res.status(400).json({ error: 'Score exceeds maximum possible (255)' });
+    }
+    
+    await db.run(
+      `UPDATE scores SET 
+        team_id = ?, judge_name = ?, mission_data = ?, 
+        mission1 = ?, mission2 = ?, mission3 = ?, mission4 = ?, mission5 = ?, mission6 = ?, mission7 = ?, 
+        total_score = ?, completion_time_seconds = ?, mechanical_design_score = ?, judge_notes = ?
+      WHERE id = ?`,
+      [
+        team_id,
+        judge_name,
+        JSON.stringify(missionData),
+        result.missions[0].score,
+        result.missions[1].score,
+        result.missions[2].score,
+        result.missions[3].score,
+        result.missions[4].score,
+        result.missions[5].score,
+        result.missions[6].score,
+        result.total,
+        completion_time_seconds,
+        mechanical_design_score || 0,
+        judge_notes,
+        id
+      ]
+    );
+    
+    res.json({ 
+      success: true, 
+      score: {
+        id: parseInt(id),
+        ...result,
+        team_id,
+        judge_name,
+        completion_time_seconds,
+        mechanical_design_score: mechanical_design_score || 0,
+        judge_notes
       }
     });
   } catch (err) {
@@ -468,9 +801,17 @@ app.post('/api/scores', requireJudge, async (req, res) => {
 // Get scores for a team (team view)
 app.get('/api/scores/team/:teamId', async (req, res) => {
   const { teamId } = req.params;
+  if (!/^[0-9]+$/.test(teamId)) {
+    return res.status(400).json({ error: 'Invalid team id' });
+  }
   
   // Team can only see their own scores
-  if (req.cookies.team_id !== teamId && req.cookies.admin_auth !== ADMIN_PASSWORD) {
+  const teamToken = verifyToken(req.cookies.team_auth);
+  const adminToken = verifyToken(req.cookies.admin_auth);
+  const isAdmin = !!adminToken && adminToken.type === 'admin';
+  const isOwnTeam = !!teamToken && teamToken.type === 'team' && String(teamToken.teamId) === String(teamId);
+  
+  if (!isOwnTeam && !isAdmin) {
     return res.status(403).json({ error: 'Unauthorized' });
   }
   
@@ -529,7 +870,10 @@ app.delete('/api/scores/:id', requireAdmin, async (req, res) => {
   
   try {
     const db = await getDb();
-    await db.run('DELETE FROM scores WHERE id = ?', [id]);
+    const result = await db.run('DELETE FROM scores WHERE id = ?', [id]);
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Score not found' });
+    }
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -569,9 +913,14 @@ app.get('/api/backup/list', requireAdmin, async (req, res) => {
 // Download backup
 app.get('/api/backup/download/:filename', requireAdmin, (req, res) => {
   const { filename } = req.params;
-  const filePath = path.join('backups', filename);
   
-  if (!fs.existsSync(filePath)) {
+  // Sanitize filename to prevent path traversal
+  const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '');
+  const filePath = path.resolve('backups', sanitizedFilename);
+  const backupDir = path.resolve('backups');
+  
+  // Ensure file path is within backup directory (prevent path traversal)
+  if (!filePath.startsWith(backupDir) || !fs.existsSync(filePath)) {
     return res.status(404).json({ error: 'Backup not found' });
   }
   
@@ -603,7 +952,10 @@ app.get('/api/announcements', async (req, res) => {
       WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > ?)
       ORDER BY is_pinned DESC, created_at DESC
     `, [now]);
-    res.json(announcements);
+    res.json(announcements.map((ann) => ({
+      ...ann,
+      is_pinned: !!ann.is_pinned,
+    })));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -615,6 +967,14 @@ app.post('/api/announcements', requireAdmin, async (req, res) => {
 
   if (!title || !content) {
     return res.status(400).json({ error: 'Title and content are required' });
+  }
+
+  if (typeof title !== 'string' || typeof content !== 'string') {
+    return res.status(400).json({ error: 'Invalid title or content' });
+  }
+
+  if (priority && !['low', 'medium', 'high'].includes(priority)) {
+    return res.status(400).json({ error: 'Invalid priority' });
   }
 
   try {
@@ -632,6 +992,7 @@ app.post('/api/announcements', requireAdmin, async (req, res) => {
         content,
         priority: priority || 'medium',
         is_pinned: !!is_pinned,
+        is_active: true,
         created_at: new Date().toISOString(),
         expires_at
       }
@@ -646,13 +1007,29 @@ app.put('/api/announcements/:id', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { title, content, priority, is_pinned, is_active, expires_at } = req.body;
 
+  if (!title || !content) {
+    return res.status(400).json({ error: 'Title and content are required' });
+  }
+
+  if (typeof title !== 'string' || typeof content !== 'string') {
+    return res.status(400).json({ error: 'Invalid title or content' });
+  }
+
+  if (priority && !['low', 'medium', 'high'].includes(priority)) {
+    return res.status(400).json({ error: 'Invalid priority' });
+  }
+
   try {
     const db = await getDb();
-    await db.run(`
+    const result = await db.run(`
       UPDATE announcements
       SET title = ?, content = ?, priority = ?, is_pinned = ?, is_active = ?, expires_at = ?
       WHERE id = ?
     `, [title, content, priority, is_pinned ? 1 : 0, is_active ? 1 : 0, expires_at, id]);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Announcement not found' });
+    }
 
     res.json({ success: true });
   } catch (err) {
@@ -666,7 +1043,10 @@ app.delete('/api/announcements/:id', requireAdmin, async (req, res) => {
 
   try {
     const db = await getDb();
-    await db.run('DELETE FROM announcements WHERE id = ?', [id]);
+    const result = await db.run('DELETE FROM announcements WHERE id = ?', [id]);
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Announcement not found' });
+    }
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -773,8 +1153,6 @@ app.listen(PORT, () => {
   } else {
     console.log(`⚠ Frontend: Run 'npm run build' first, or use 'npm run dev' for development`);
   }
-  console.log(`✓ Admin password: ${ADMIN_PASSWORD}`);
-  console.log(`✓ Team/Judge password: ${TEAM_PASSWORD}`);
   console.log(`✓ Database: SQLite with WAL mode`);
   console.log(`✓ Auto-backup: Every 5 minutes`);
 });
