@@ -8,7 +8,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Persistent Data Directory
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+// In Railway, mount volume to /app/data
+const isProd = process.env.NODE_ENV === 'production';
+const DATA_DIR = process.env.DATA_DIR || (isProd ? '/app/data' : path.join(process.cwd(), 'data'));
+
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
