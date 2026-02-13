@@ -121,3 +121,15 @@ export interface Announcement {
   created_at: string;
   expires_at?: string;
 }
+
+export interface Ticket {
+  id: number;
+  name: string;
+  email: string;
+  category: 'Rule Query' | 'Technical Support' | 'Submission Issue' | 'Other';
+  urgency: 'Low' | 'Medium' | 'High' | 'Critical';
+  description: string;
+  file_path?: string;
+  status: 'Open' | 'Pending' | 'Resolved';
+  created_at: string;
+}

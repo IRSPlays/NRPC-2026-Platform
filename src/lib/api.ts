@@ -1,4 +1,4 @@
-import { Team, MissionData, ScoreCalculation, Submission, Score, BackupFile, Announcement } from '../types';
+import { Team, MissionData, ScoreCalculation, Submission, Score, BackupFile, Announcement, Ticket } from '../types';
 
 // Use relative URLs in production (frontend served from same server)
 // Use localhost:3001 in development (Vite proxy)
@@ -216,5 +216,48 @@ export const announcementsAPI = {
 
   togglePin: (id: number): Promise<{ success: boolean; is_pinned: boolean }> => fetchWithAuth<{ success: boolean; is_pinned: boolean }>(`/api/announcements/${id}/pin`, {
     method: 'PATCH',
+  }),
+};
+
+// Tickets
+export const ticketsAPI = {
+  create: async (data: {
+    name: string;
+    email: string;
+    category: string;
+    urgency: string;
+    description: string;
+    file?: File;
+  }): Promise<{ success: boolean; ticketId: number }> => {
+    const formData = new FormData();
+    formData.append('name', data.name);
+    formData.append('email', data.email);
+    formData.append('category', data.category);
+    formData.append('urgency', data.urgency);
+    formData.append('description', data.description);
+    if (data.file) formData.append('file', data.file);
+    
+    const response = await fetch(`${API_URL}/api/tickets`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Submission failed' }));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  getAll: (): Promise<Ticket[]> => fetchWithAuth<Ticket[]>('/api/tickets'),
+
+  updateStatus: (id: number, status: string): Promise<{ success: boolean }> => fetchWithAuth<{ success: boolean }>(`/api/tickets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  }),
+
+  delete: (id: number): Promise<{ success: boolean }> => fetchWithAuth<{ success: boolean }>(`/api/tickets/${id}`, {
+    method: 'DELETE',
   }),
 };

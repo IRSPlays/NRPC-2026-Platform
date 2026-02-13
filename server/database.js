@@ -87,6 +87,20 @@ async function initDatabase() {
     )
   `);
 
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      category TEXT CHECK(category IN ('Rule Query', 'Technical Support', 'Submission Issue', 'Other')) NOT NULL,
+      urgency TEXT CHECK(urgency IN ('Low', 'Medium', 'High', 'Critical')) DEFAULT 'Medium',
+      description TEXT NOT NULL,
+      file_path TEXT,
+      status TEXT CHECK(status IN ('Open', 'Pending', 'Resolved')) DEFAULT 'Open',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Migration: Check and add mechanical_design_score if missing
   try {
     const tableInfo = await db.all("PRAGMA table_info(scores)");
@@ -129,13 +143,15 @@ export async function backupDatabase() {
   const submissions = await database.all('SELECT * FROM submissions');
   const scores = await database.all('SELECT * FROM scores');
   const announcements = await database.all('SELECT * FROM announcements');
+  const tickets = await database.all('SELECT * FROM tickets');
 
   const backup = {
     timestamp: new Date().toISOString(),
     teams,
     submissions,
     scores,
-    announcements
+    announcements,
+    tickets
   };
 
   if (!fs.existsSync('./backups')) {
@@ -173,6 +189,7 @@ export async function restoreDatabase(backupData) {
     await database.run('DELETE FROM submissions');
     await database.run('DELETE FROM teams');
     await database.run('DELETE FROM announcements');
+    await database.run('DELETE FROM tickets');
 
     for (const team of backupData.teams) {
       await database.run(
@@ -200,6 +217,15 @@ export async function restoreDatabase(backupData) {
         await database.run(
           'INSERT INTO announcements (id, title, content, priority, is_pinned, is_active, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
           [ann.id, ann.title, ann.content, ann.priority, ann.is_pinned ? 1 : 0, ann.is_active ? 1 : 0, ann.expires_at, ann.created_at]
+        );
+      }
+    }
+
+    if (backupData.tickets) {
+      for (const ticket of backupData.tickets) {
+        await database.run(
+          'INSERT INTO tickets (id, name, email, category, urgency, description, file_path, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [ticket.id, ticket.name, ticket.email, ticket.category, ticket.urgency, ticket.description, ticket.file_path, ticket.status, ticket.created_at]
         );
       }
     }

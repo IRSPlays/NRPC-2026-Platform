@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Calculator, Trophy, Upload, Shield, Moon, Sun, LogOut, User, Cpu, Menu, X } from 'lucide-react';
+import { Calculator, Trophy, Upload, Shield, Moon, Sun, LogOut, User, Cpu, Menu, X, MessageSquare } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -30,6 +30,17 @@ export default function Header() {
       >
         <Calculator className="w-4 h-4" />
         <span>Calculator</span>
+      </Link>
+
+      <Link 
+        to="/support" 
+        onClick={() => setIsMenuOpen(false)}
+        className={`flex items-center gap-2 text-sm font-mono uppercase tracking-widest transition-all ${
+          isActive('/support') ? 'text-neo-cyan neo-text-glow' : 'text-neo-slate/60 hover:text-neo-cyan'
+        }`}
+      >
+        <MessageSquare className="w-4 h-4" />
+        <span>Support</span>
       </Link>
 
       {isTeam && (

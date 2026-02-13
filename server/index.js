@@ -203,6 +203,36 @@ const upload = multer({
   }
 });
 
+// Ticket upload setup (Strictly images)
+const ticketStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = 'uploads/tickets/';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const cleanName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    cb(null, `${timestamp}-${cleanName}`);
+  }
+});
+
+const uploadTicket = multer({
+  storage: ticketStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for ticket images
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images (JPG, PNG, WEBP) are allowed for tickets'));
+    }
+  }
+});
+
 // ===== AUTH ROUTES =====
 
 const COOKIE_OPTIONS = {
@@ -1065,6 +1095,82 @@ app.patch('/api/announcements/:id/pin', requireAdmin, async (req, res) => {
     }
     await db.run('UPDATE announcements SET is_pinned = ? WHERE id = ?', [ann.is_pinned ? 0 : 1, id]);
     res.json({ success: true, is_pinned: !ann.is_pinned });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ===== TICKET ROUTES =====
+
+// Create ticket (public)
+app.post('/api/tickets', publicLimiter, uploadTicket.single('file'), async (req, res) => {
+  const { name, email, category, urgency, description } = req.body;
+
+  if (!name || !email || !category || !description) {
+    if (req.file) fs.unlinkSync(req.file.path);
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const db = await getDb();
+    const filePath = req.file ? `uploads/tickets/${req.file.filename}` : null;
+    
+    const result = await db.run(
+      'INSERT INTO tickets (name, email, category, urgency, description, file_path) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, email, category, urgency || 'Medium', description, filePath]
+    );
+
+    res.json({ success: true, ticketId: result.lastID });
+  } catch (err) {
+    if (req.file) fs.unlinkSync(req.file.path);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all tickets (admin only)
+app.get('/api/tickets', requireAdmin, async (req, res) => {
+  try {
+    const db = await getDb();
+    const tickets = await db.all('SELECT * FROM tickets ORDER BY created_at DESC');
+    res.json(tickets);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update ticket status (admin only)
+app.patch('/api/tickets/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!['Open', 'Pending', 'Resolved'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+
+  try {
+    const db = await getDb();
+    const result = await db.run('UPDATE tickets SET status = ? WHERE id = ?', [status, id]);
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete ticket (admin only)
+app.delete('/api/tickets/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const db = await getDb();
+    const ticket = await db.get('SELECT file_path FROM tickets WHERE id = ?', [id]);
+    if (ticket && ticket.file_path) {
+      const fullPath = path.join(process.cwd(), ticket.file_path);
+      if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+    }
+    await db.run('DELETE FROM tickets WHERE id = ?', [id]);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

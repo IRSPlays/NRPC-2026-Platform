@@ -343,8 +343,14 @@ export default function Home() {
         </Link>
       </section>
 
-      <footer className="text-center py-12 md:py-20 border-t border-white/5 opacity-50 relative z-10">
-        <div className="flex justify-center gap-8 mb-8 opacity-40">
+      <footer className="text-center py-12 md:py-20 border-t border-white/5 relative z-10 space-y-8">
+        <div className="flex flex-col items-center gap-4">
+          <p className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest">Encountering Issues?</p>
+          <Link to="/support" className="text-xs font-mono text-neo-cyan hover:neo-text-glow uppercase tracking-[0.3em] flex items-center gap-2">
+            <MessageSquare className="w-4 h-4" /> Open Support Signal
+          </Link>
+        </div>
+        <div className="flex justify-center gap-8 opacity-40">
            <img src="/ADSS Logo.png" alt="ADSS" className="h-10 w-auto" />
            <img src="/NYP Lgo.svg" alt="NYP" className="h-10 w-auto" />
         </div>

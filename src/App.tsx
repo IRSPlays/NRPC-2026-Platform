@@ -8,6 +8,7 @@ import Calculator from './pages/Calculator';
 import TeamLogin from './pages/TeamLogin';
 import TeamDashboard from './pages/TeamDashboard';
 import Submit from './pages/Submit';
+import Support from './pages/Support';
 import Admin from './pages/Admin';
 import AdminLogin from './components/admin/AdminLogin';
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -16,6 +17,7 @@ import TeamManager from './components/admin/TeamManager';
 import SubmissionReview from './components/admin/SubmissionReview';
 import RobotPerformanceReview from './components/admin/RobotPerformanceReview';
 import ScoreManager from './components/admin/ScoreManager';
+import TicketManager from './components/admin/TicketManager';
 import Leaderboard from './components/admin/Leaderboard';
 import BackupManager from './components/admin/BackupManager';
 import { authAPI } from './lib/api';
@@ -46,6 +48,7 @@ function App() {
             <Route path="/team-login" element={<main className="container mx-auto px-4 py-8"><TeamLogin /></main>} />
             <Route path="/team-dashboard" element={<main className="container mx-auto px-4 py-8"><TeamDashboard /></main>} />
             <Route path="/submit" element={<main className="container mx-auto px-4 py-8"><Submit /></main>} />
+            <Route path="/support" element={<main className="container mx-auto px-4 py-8"><Support /></main>} />
 
             <Route path="/admin" element={<Admin />}>
               <Route index element={<AdminLogin />} />
@@ -56,6 +59,7 @@ function App() {
               <Route path="robot-performance" element={<RobotPerformanceReview />} />
               <Route path="scoring" element={<ScoreManager />} />
               <Route path="leaderboard" element={<Leaderboard />} />
+              <Route path="tickets" element={<TicketManager />} />
               <Route path="backup" element={<BackupManager />} />
             </Route>
 
