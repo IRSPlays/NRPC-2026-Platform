@@ -53,6 +53,25 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
+// Rate Limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 500, // Limit each IP to 500 requests per window
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+
+const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // Limit each IP to 20 login attempts per 15 minutes
+  message: { error: 'Too many login attempts, please try again after 15 minutes' }
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 app.use('/api/', generalLimiter);
