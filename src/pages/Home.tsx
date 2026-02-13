@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Calculator, Upload, ArrowRight, Zap, Target, BookOpen, Cpu, ShieldAlert, Calendar, QrCode, ExternalLink } from 'lucide-react';
+import { Calculator, Upload, ArrowRight, Zap, Target, BookOpen, Cpu, ShieldAlert, ExternalLink, Award, MapPin, Star } from 'lucide-react';
 import CountdownTimer from '../components/home/CountdownTimer';
 import Announcements from '../components/home/Announcements';
 
-const COMPETITION_DATE = '2026-05-09T17:00:00';
+const COMPETITION_DATE = '2026-05-08T17:00:00';
 
 const timeline = [
   { date: '23 JAN - 4 MAR', event: 'Registration Open', active: true },
@@ -11,6 +11,37 @@ const timeline = [
   { date: '20 MAY, 5PM', event: 'Results of Selected Teams', active: false },
   { date: '28 MAY, 2:30PM', event: 'Surprise Mission', active: false },
   { date: '28 MAY', event: 'Prize Giving Ceremony', active: false },
+];
+
+const awards = [
+  {
+    rank: 'OVERALL CHAMPION (1ST)',
+    title: 'Championship Award',
+    criteria: [
+      '60% Robot Performance',
+      '20% Mechanical Design',
+      '20% Research Poster'
+    ],
+    highlight: true
+  },
+  {
+    rank: '1ST - 3RD PLACE',
+    title: 'Best Robot Performance',
+    description: 'Highest scores in mission objectives. Selection for F2F mission based on online score and timing.',
+    highlight: false
+  },
+  {
+    rank: '1ST - 3RD PLACE',
+    title: 'Best Mechanical Design',
+    description: 'Demonstrates sound understanding and appropriate use of mechanical principles.',
+    highlight: false
+  },
+  {
+    rank: '1ST - 3RD PLACE',
+    title: 'Best Research Poster',
+    description: 'Creativity in how modern science and biotech can bring back extinct species.',
+    highlight: false
+  }
 ];
 
 export default function Home() {
@@ -40,9 +71,16 @@ export default function Home() {
             De-<span className="text-neo-cyan neo-text-glow">Extinction</span>
           </h1>
           
-          <p className="text-base md:text-2xl text-neo-slate/80 font-mono tracking-tight max-w-3xl mx-auto px-4">
-            Synthesizing biological recovery through <span className="text-neo-amber text-glow">advanced robotics</span> and genomic innovation.
-          </p>
+          <div className="max-w-3xl mx-auto px-4 space-y-6">
+            <p className="text-base md:text-xl text-neo-slate/80 font-mono tracking-tight leading-relaxed">
+              The 18th edition of the National Robotics Programming Competition (NRPC) is back for both <span className="text-neo-cyan">Primary and Secondary schools</span>. 
+              In 2026, teams will compete within their own categories, using <span className="text-neo-amber">LEGO® MINDSTORMS™ EV3</span> or <span className="text-neo-amber">LEGO® Education SPIKE™ Prime</span> sets.
+            </p>
+            <p className="text-sm md:text-base text-neo-slate/60 leading-relaxed italic">
+              Participating schools receive a complimentary playfield. Submissions are mostly online, with invited teams 
+              attending a face-to-face Surprise Mission on 28 May for the final title.
+            </p>
+          </div>
         </div>
 
         <div className="flex justify-center w-full max-w-5xl mx-auto px-2">
@@ -67,7 +105,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Registration Section - NEW */}
+      {/* Registration Section */}
       <section className="max-w-5xl mx-auto px-4 relative z-10">
         <div className="neo-glass rounded-[2rem] border-2 border-neo-cyan/20 p-8 md:p-12 overflow-hidden relative group">
           <div className="scanning-line absolute w-full top-0 left-0 opacity-20"></div>
@@ -104,6 +142,78 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Awards & Criteria Section */}
+      <section className="max-w-6xl mx-auto px-4 relative z-10">
+        <div className="flex flex-col items-center gap-12">
+          <div className="text-center">
+            <h2 className="text-xs font-mono text-neo-amber/60 uppercase tracking-[0.5em] mb-2">Recognition & Excellence</h2>
+            <p className="text-3xl md:text-5xl font-heading font-black text-white uppercase tracking-tight">Awards & Criteria</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 w-full">
+            {awards.map((award, index) => (
+              <div 
+                key={index}
+                className={`neo-glass p-8 rounded-[2rem] border transition-all duration-500 relative overflow-hidden group ${
+                  award.highlight ? 'border-neo-amber/40 bg-neo-amber/5' : 'border-white/5 hover:border-neo-cyan/30'
+                }`}
+              >
+                <div className="relative z-10 space-y-4">
+                  <div className={`text-[10px] font-mono font-bold tracking-widest ${award.highlight ? 'text-neo-amber' : 'text-neo-cyan/60'}`}>
+                    {award.rank}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-xl md:text-2xl font-heading font-bold text-white uppercase tracking-tight">
+                      {award.title}
+                    </h3>
+                    {award.highlight && <Star className="w-5 h-5 text-neo-amber fill-neo-amber" />}
+                  </div>
+                  {award.criteria ? (
+                    <ul className="space-y-2 pt-2">
+                      {award.criteria.map((c, i) => (
+                        <li key={i} className="flex items-center gap-3 text-sm text-neo-slate/70 font-mono">
+                          <div className="w-1.5 h-1.5 rounded-full bg-neo-amber"></div>
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-neo-slate/60 leading-relaxed font-mono">
+                      {award.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Venues Section */}
+      <section className="max-w-5xl mx-auto px-4 relative z-10">
+        <div className="neo-glass rounded-[2rem] border border-white/5 p-8 md:p-12 overflow-hidden bg-white/[0.02]">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+            <div className="text-center md:text-left space-y-2">
+              <div className="flex items-center justify-center md:justify-start gap-2 text-neo-cyan">
+                <MapPin className="w-5 h-5" />
+                <span className="text-xs font-mono font-bold uppercase tracking-widest">Surprise Mission Venues</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-heading font-bold text-white uppercase">Operational Hubs</h2>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-6 w-full md:w-auto">
+              <div className="flex-1 p-6 rounded-2xl bg-neo-void/50 border border-white/5 space-y-2 min-w-[240px]">
+                <div className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest">Primary Category</div>
+                <div className="text-white font-bold uppercase">Admiralty Secondary School</div>
+              </div>
+              <div className="flex-1 p-6 rounded-2xl bg-neo-void/50 border border-white/5 space-y-2 min-w-[240px]">
+                <div className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest">Secondary Category</div>
+                <div className="text-white font-bold uppercase">Nanyang Polytechnic</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Announcements */}
       <section className="max-w-4xl mx-auto px-4 relative z-10">
         <div className="relative group">
@@ -121,7 +231,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Competition Timeline - NEW */}
+      {/* Competition Timeline */}
       <section className="max-w-5xl mx-auto px-4 relative z-10">
         <div className="flex flex-col items-center gap-12">
           <div className="text-center">
