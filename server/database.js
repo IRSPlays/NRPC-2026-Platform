@@ -7,7 +7,13 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), 'database.sqlite');
+// Persistent Data Directory
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const DB_PATH = path.join(DATA_DIR, 'database.sqlite');
 
 let db = null;
 
@@ -150,7 +156,8 @@ export async function getDb() {
 export async function backupDatabase() {
   const database = await getDb();
   const timestamp = Date.now();
-  const backupPath = path.join('./backups', `backup-${timestamp}.json`);
+  const backupDir = path.join(DATA_DIR, 'backups');
+  const backupPath = path.join(backupDir, `backup-${timestamp}.json`);
 
   const teams = await database.all('SELECT * FROM teams');
   const submissions = await database.all('SELECT * FROM submissions');
@@ -167,24 +174,24 @@ export async function backupDatabase() {
     tickets
   };
 
-  if (!fs.existsSync('./backups')) {
-    fs.mkdirSync('./backups', { recursive: true });
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
   }
 
   fs.writeFileSync(backupPath, JSON.stringify(backup, null, 2));
   
   // Keep only last 50 backups
-  const files = fs.readdirSync('./backups')
+  const files = fs.readdirSync(backupDir)
     .filter(f => f.startsWith('backup-'))
     .map(f => ({
       name: f,
-      time: fs.statSync(path.join('./backups', f)).mtime
+      time: fs.statSync(path.join(backupDir, f)).mtime
     }))
     .sort((a, b) => b.time - a.time);
   
   if (files.length > 50) {
     files.slice(50).forEach(f => {
-      fs.unlinkSync(path.join('./backups', f.name));
+      fs.unlinkSync(path.join(backupDir, f.name));
     });
   }
 

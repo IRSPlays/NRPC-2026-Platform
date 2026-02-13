@@ -18,6 +18,12 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const isProd = process.env.NODE_ENV === 'production';
 
+// Persistent Data Directory
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
 // Enable trust proxy for Railway/Heroku/Vercel to fix rate-limiting
 app.set('trust proxy', 1);
 
@@ -113,7 +119,7 @@ app.use('/uploads', (req, res, next) => {
   }
   
   next();
-}, express.static('uploads'));
+}, express.static(path.join(DATA_DIR, 'uploads')));
 
 // Auth passwords from env (defaults for dev)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'NRPCTeam2026';
@@ -191,10 +197,11 @@ const requireAdminOrJudge = async (req, res, next) => {
 // File upload setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    if (!fs.existsSync('uploads')) {
-      fs.mkdirSync('uploads', { recursive: true });
+    const uploadDir = path.join(DATA_DIR, 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
-    cb(null, 'uploads/');
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const timestamp = Date.now();
@@ -221,7 +228,7 @@ const upload = multer({
 // Ticket upload setup (Strictly images)
 const ticketStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = 'uploads/tickets/';
+    const dir = path.join(DATA_DIR, 'uploads/tickets/');
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -1135,6 +1142,13 @@ app.post('/api/tickets', publicLimiter, uploadTicket.single('file'), async (req,
 
   try {
     const db = await getDb();
+    // Path stored in DB should be relative to the static mount point
+    // Since express.static serves DATA_DIR/uploads at /uploads, 
+    // we need to store 'uploads/tickets/filename' if we want the frontend to use /uploads/tickets/filename
+    // But wait, ticketStorage saves to DATA_DIR/uploads/tickets/
+    // So the file is physically at DATA_DIR/uploads/tickets/filename
+    // Our static middleware serves DATA_DIR/uploads at /uploads
+    // So URL will be /uploads/tickets/filename
     const filePath = req.file ? `uploads/tickets/${req.file.filename}` : null;
     
     const result = await db.run(
