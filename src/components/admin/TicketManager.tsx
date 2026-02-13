@@ -179,10 +179,18 @@ export default function TicketManager() {
                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-1">
                   <div className="flex items-center gap-2 text-[8px] font-mono text-neo-slate/40 uppercase tracking-widest"><User className="w-3 h-3" /> Source Identifier</div>
                   <div className="text-sm font-bold text-white uppercase">{selectedTicket.name}</div>
+                  {selectedTicket.team_name && (
+                    <div className="text-[10px] font-mono text-neo-cyan uppercase mt-1">
+                      Unit: {selectedTicket.team_name} ({selectedTicket.school_name})
+                    </div>
+                  )}
                 </div>
                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-1">
                   <div className="flex items-center gap-2 text-[8px] font-mono text-neo-slate/40 uppercase tracking-widest"><Mail className="w-3 h-3" /> Comm Endpoint</div>
                   <div className="text-sm font-bold text-neo-cyan">{selectedTicket.email}</div>
+                  <a href={`mailto:${selectedTicket.email}?subject=NRPC Support: ${selectedTicket.category}`} className="text-[8px] font-mono text-neo-slate/40 uppercase hover:text-white underline mt-1 block">
+                    Reply via secure link
+                  </a>
                 </div>
               </div>
 

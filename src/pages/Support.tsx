@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Send, AlertCircle, CheckCircle2, Upload, X, ShieldAlert, Zap, Radio, Info } from 'lucide-react';
+import { MessageSquare, Send, AlertCircle, CheckCircle2, Upload, X, ShieldAlert, Zap, Radio, Info, Users } from 'lucide-react';
 import { ticketsAPI } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
 
 const CATEGORIES = ['Rule Query', 'Technical Support', 'Submission Issue', 'Other'];
 const URGENCY_LEVELS = [
@@ -12,6 +13,7 @@ const URGENCY_LEVELS = [
 ];
 
 export default function Support() {
+  const { isTeam, teamName } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -26,6 +28,12 @@ export default function Support() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isTeam && teamName) {
+      setFormData(prev => ({ ...prev, name: teamName }));
+    }
+  }, [isTeam, teamName]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -91,7 +99,14 @@ export default function Support() {
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-heading font-black text-white uppercase tracking-tight">Support <span className="text-neo-cyan">Uplink</span></h1>
-              <p className="text-xs md:text-sm font-mono text-neo-cyan/60 uppercase tracking-[0.3em] mt-1">Submit technical signals to central hub</p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-xs md:text-sm font-mono text-neo-cyan/60 uppercase tracking-[0.3em]">Submit technical signals</p>
+                {isTeam && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-neo-cyan/20 border border-neo-cyan/30 text-[8px] font-mono text-neo-cyan font-bold uppercase tracking-widest">
+                    <Users className="w-3 h-3" /> Team Authenticated
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

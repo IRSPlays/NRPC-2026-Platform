@@ -90,6 +90,7 @@ async function initDatabase() {
   await db.run(`
     CREATE TABLE IF NOT EXISTS tickets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      team_id INTEGER REFERENCES teams(id),
       name TEXT NOT NULL,
       email TEXT NOT NULL,
       category TEXT CHECK(category IN ('Rule Query', 'Technical Support', 'Submission Issue', 'Other')) NOT NULL,
@@ -100,6 +101,18 @@ async function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Migration: Check and add team_id to tickets if missing
+  try {
+    const tableInfo = await db.all("PRAGMA table_info(tickets)");
+    const hasTeamId = tableInfo.some(col => col.name === 'team_id');
+    if (!hasTeamId) {
+      console.log('Migrating: Adding team_id to tickets table...');
+      await db.run("ALTER TABLE tickets ADD COLUMN team_id INTEGER REFERENCES teams(id)");
+    }
+  } catch (err) {
+    console.error('Migration error:', err);
+  }
 
   // Migration: Check and add mechanical_design_score if missing
   try {
@@ -224,8 +237,8 @@ export async function restoreDatabase(backupData) {
     if (backupData.tickets) {
       for (const ticket of backupData.tickets) {
         await database.run(
-          'INSERT INTO tickets (id, name, email, category, urgency, description, file_path, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [ticket.id, ticket.name, ticket.email, ticket.category, ticket.urgency, ticket.description, ticket.file_path, ticket.status, ticket.created_at]
+          'INSERT INTO tickets (id, team_id, name, email, category, urgency, description, file_path, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [ticket.id, ticket.team_id || null, ticket.name, ticket.email, ticket.category, ticket.urgency, ticket.description, ticket.file_path, ticket.status, ticket.created_at]
         );
       }
     }

@@ -124,6 +124,7 @@ export interface Announcement {
 
 export interface Ticket {
   id: number;
+  team_id?: number;
   name: string;
   email: string;
   category: 'Rule Query' | 'Technical Support' | 'Submission Issue' | 'Other';
@@ -132,4 +133,6 @@ export interface Ticket {
   file_path?: string;
   status: 'Open' | 'Pending' | 'Resolved';
   created_at: string;
+  team_name?: string;
+  school_name?: string;
 }

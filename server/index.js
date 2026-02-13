@@ -1108,7 +1108,7 @@ app.patch('/api/announcements/:id/pin', requireAdmin, async (req, res) => {
 
 // ===== TICKET ROUTES =====
 
-// Create ticket (public)
+// Create ticket (public or team)
 app.post('/api/tickets', publicLimiter, uploadTicket.single('file'), async (req, res) => {
   const { name, email, category, urgency, description } = req.body;
 
@@ -1117,13 +1117,20 @@ app.post('/api/tickets', publicLimiter, uploadTicket.single('file'), async (req,
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
+  // Check for team auth (optional)
+  let teamId = null;
+  const teamToken = verifyToken(req.cookies.team_auth);
+  if (teamToken && teamToken.type === 'team') {
+    teamId = teamToken.teamId;
+  }
+
   try {
     const db = await getDb();
     const filePath = req.file ? `uploads/tickets/${req.file.filename}` : null;
     
     const result = await db.run(
-      'INSERT INTO tickets (name, email, category, urgency, description, file_path) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, email, category, urgency || 'Medium', description, filePath]
+      'INSERT INTO tickets (team_id, name, email, category, urgency, description, file_path) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [teamId, name, email, category, urgency || 'Medium', description, filePath]
     );
 
     res.json({ success: true, ticketId: result.lastID });
@@ -1137,7 +1144,12 @@ app.post('/api/tickets', publicLimiter, uploadTicket.single('file'), async (req,
 app.get('/api/tickets', requireAdmin, async (req, res) => {
   try {
     const db = await getDb();
-    const tickets = await db.all('SELECT * FROM tickets ORDER BY created_at DESC');
+    const tickets = await db.all(`
+      SELECT t.*, teams.team_name, teams.school_name 
+      FROM tickets t 
+      LEFT JOIN teams ON t.team_id = teams.id 
+      ORDER BY t.created_at DESC
+    `);
     res.json(tickets);
   } catch (err) {
     res.status(500).json({ error: err.message });
