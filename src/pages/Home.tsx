@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Calculator, Upload, ArrowRight, Zap, Target, BookOpen, Cpu, ShieldAlert, ExternalLink, Award, MapPin, Star } from 'lucide-react';
+import { Calculator, Upload, ArrowRight, Zap, Target, BookOpen, Cpu, ShieldAlert, ExternalLink, Award, MapPin, Star, MessageSquare } from 'lucide-react';
 import CountdownTimer from '../components/home/CountdownTimer';
 import Announcements from '../components/home/Announcements';
 
