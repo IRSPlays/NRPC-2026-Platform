@@ -18,47 +18,18 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const isProd = process.env.NODE_ENV === 'production';
 
-// Security Middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      scriptSrc: ["'self'"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'"],
-    },
-  },
-}));
-
-// Rate Limiting
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Limit each IP to 500 requests per window
-  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
-});
-
-const publicLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20, // Limit each IP to 20 login attempts per 15 minutes
-  message: { error: 'Too many login attempts, please try again after 15 minutes' }
-});
-
 // Middleware
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:5173', 'http://localhost:3000'];
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8080'];
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow same-origin requests (no origin), localhost, and any railway app domain
+    if (!origin || 
+        allowedOrigins.includes(origin) || 
+        origin.endsWith('.railway.app') || 
+        origin.endsWith('.up.railway.app')) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -66,6 +37,22 @@ app.use(cors({
   },
   credentials: true
 }));
+
+// Security Middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+      imgSrc: ["'self'", "data:", "blob:", "*"],
+      connectSrc: ["'self'", "*"], // Broaden for API communication
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 app.use('/api/', generalLimiter);
