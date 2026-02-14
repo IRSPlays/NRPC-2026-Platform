@@ -150,6 +150,27 @@ export const submissionsAPI = {
       submission_type: submissionType
     }),
   }),
+
+  submitRobotRun: async (teamId: number, file: File, originalFilename: string, externalLink: string): Promise<{ success: boolean; submission: Submission }> => {
+    const formData = new FormData();
+    formData.append('team_id', teamId.toString());
+    formData.append('file', file);
+    formData.append('original_filename', originalFilename);
+    formData.append('external_link', externalLink);
+    
+    const response = await fetch(`${API_URL}/api/submissions/robot`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
   
   score: (id: number, scores: {
     concept_score: number;

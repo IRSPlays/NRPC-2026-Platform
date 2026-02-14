@@ -588,6 +588,55 @@ app.post('/api/submissions/link', async (req, res) => {
   }
 });
 
+// Create robot run submission (File + Link combined)
+app.post('/api/submissions/robot', upload.single('file'), async (req, res) => {
+  const { team_id, original_filename, external_link } = req.body;
+  
+  // Verify team is logged in
+  const teamToken = verifyToken(req.cookies.team_auth);
+  if (!teamToken || teamToken.type !== 'team' || teamToken.teamId != team_id) {
+    if (req.file) fs.unlinkSync(req.file.path);
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'Scoring sheet file is required' });
+  }
+
+  if (!external_link) {
+    if (req.file) fs.unlinkSync(req.file.path);
+    return res.status(400).json({ error: 'Video link is required' });
+  }
+
+  try {
+    const db = await getDb();
+    // For robot runs, we store the file path relative to the mount
+    // Note: 'upload' middleware uses DATA_DIR/uploads
+    // So filename is just the name, path relative to static mount is 'uploads/filename'
+    const filePath = `uploads/${req.file.filename}`;
+    
+    const result = await db.run(
+      'INSERT INTO submissions (team_id, submission_type, file_path, external_link, original_filename) VALUES (?, ?, ?, ?, ?)',
+      [team_id, 'robot_run', filePath, external_link, original_filename]
+    );
+    
+    res.json({ 
+      success: true, 
+      submission: { 
+        id: result.lastID,
+        team_id,
+        submission_type: 'robot_run',
+        file_path: filePath,
+        external_link,
+        original_filename
+      } 
+    });
+  } catch (err) {
+    if (req.file) fs.unlinkSync(req.file.path);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Score submission (admin only)
 app.put('/api/submissions/:id/score', requireAdmin, async (req, res) => {
   const { id } = req.params;
