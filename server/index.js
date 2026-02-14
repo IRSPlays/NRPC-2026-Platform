@@ -1005,16 +1005,17 @@ app.post('/api/backup', requireAdmin, async (req, res) => {
 
 // List backups
 app.get('/api/backup/list', requireAdmin, async (req, res) => {
-  if (!fs.existsSync('backups')) {
+  const backupDir = path.join(DATA_DIR, 'backups');
+  if (!fs.existsSync(backupDir)) {
     return res.json([]);
   }
   
-  const files = fs.readdirSync('backups')
+  const files = fs.readdirSync(backupDir)
     .filter(f => f.startsWith('backup-'))
     .map(f => ({
       name: f,
-      size: fs.statSync(path.join('backups', f)).size,
-      created: fs.statSync(path.join('backups', f)).mtime
+      size: fs.statSync(path.join(backupDir, f)).size,
+      created: fs.statSync(path.join(backupDir, f)).mtime
     }))
     .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
   
@@ -1027,8 +1028,8 @@ app.get('/api/backup/download/:filename', requireAdmin, (req, res) => {
   
   // Sanitize filename to prevent path traversal
   const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '');
-  const filePath = path.resolve('backups', sanitizedFilename);
-  const backupDir = path.resolve('backups');
+  const backupDir = path.join(DATA_DIR, 'backups');
+  const filePath = path.join(backupDir, sanitizedFilename);
   
   // Ensure file path is within backup directory (prevent path traversal)
   if (!filePath.startsWith(backupDir) || !fs.existsSync(filePath)) {
