@@ -4,35 +4,41 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- SEO Meta Tags -->
+    <!-- Primary Meta Tags -->
     <title>NRPC 2026 | De-Extinction Challenge</title>
+    <meta name="title" content="NRPC 2026 | De-Extinction Challenge" />
     <meta name="description" content="Official platform for the 18th National Robotics Programming Competition (NRPC). Register teams, calculate mission scores, and submit research posters for the De-Extinction challenge." />
     <meta name="keywords" content="NRPC 2026, robotics competition, lego robotics, de-extinction, singapore robotics, admiralty secondary school, nanyang polytechnic" />
     <meta name="author" content="NRPC Organising Committee" />
     <meta name="robots" content="index, follow" />
     <meta name="language" content="en" />
-    
-    <!-- Open Graph / Social Media (Facebook, WhatsApp, LinkedIn) -->
+
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="NRPC 2026: De-Extinction Challenge" />
-    <meta property="og:description" content="The 18th Edition is here. Join the mission to synthesize biological recovery through advanced robotics. Register now!" />
-    <meta property="og:image" content="/og-preview.png" />
-    <meta property="og:site_name" content="NRPC 2026" />
-    
+    <meta property="og:url" content="https://nrpc-platform.app/" />
+    <meta property="og:title" content="NRPC 2026 | De-Extinction Challenge" />
+    <meta property="og:description" content="Official platform for the 18th National Robotics Programming Competition (NRPC). Register teams, calculate mission scores, and submit research posters for the De-Extinction challenge." />
+    <meta property="og:image" content="https://nrpc-platform.app/NRPC%20Logo.png" />
+
     <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="NRPC 2026: De-Extinction Challenge" />
-    <meta name="twitter:description" content="Official platform for the 18th National Robotics Programming Competition. Register now!" />
-    <meta name="twitter:image" content="/og-preview.png" />
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://nrpc-platform.app/" />
+    <meta property="twitter:title" content="NRPC 2026 | De-Extinction Challenge" />
+    <meta property="twitter:description" content="Official platform for the 18th National Robotics Programming Competition (NRPC). Register teams, calculate mission scores, and submit research posters for the De-Extinction challenge." />
+    <meta property="twitter:image" content="https://nrpc-platform.app/NRPC%20Logo.png" />
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     
-    <!-- Dynamic URL for SEO (set by JS) -->
+    <!-- Dynamic URL fallback -->
     <script>
       const baseUrl = window.location.origin;
-      document.write('<link rel="canonical" href="' + baseUrl + '/" />');
-      document.write('<meta property="og:url" content="' + baseUrl + '/" />');
+      if (!document.querySelector('link[rel="canonical"]')) {
+        const link = document.createElement('link');
+        link.rel = 'canonical';
+        link.href = baseUrl + '/';
+        document.head.appendChild(link);
+      }
     </script>
     
     <!-- Fonts -->
