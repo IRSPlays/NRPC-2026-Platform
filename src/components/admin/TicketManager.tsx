@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   MessageSquare, 
   Clock, 
@@ -14,7 +14,8 @@ import {
   Activity, 
   Zap,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Send
 } from 'lucide-react';
 import { ticketsAPI, getFileUrl } from '../../lib/api';
 import { Ticket } from '../../types';
@@ -25,10 +26,23 @@ export default function TicketManager() {
   const [error, setError] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [replyMessage, setReplyMessage] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadTickets();
   }, []);
+
+  useEffect(() => {
+    if (selectedTicket) {
+      scrollToBottom();
+    }
+  }, [selectedTicket?.messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const loadTickets = async () => {
     try {
@@ -39,6 +53,18 @@ export default function TicketManager() {
       setError('Signal Retrieval Failure: Central database unreachable.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // When selecting a ticket, fetch its full details (including messages)
+  const handleSelectTicket = async (ticket: Ticket) => {
+    try {
+      const details = await ticketsAPI.getDetails(ticket.id);
+      setSelectedTicket(details);
+    } catch (err) {
+      console.error("Failed to load ticket details");
+      // Fallback to basic info if fetch fails
+      setSelectedTicket(ticket);
     }
   };
 
@@ -62,6 +88,30 @@ export default function TicketManager() {
       setSelectedTicket(null);
     } catch (err) {
       setError('Signal Termination Failure.');
+    }
+  };
+
+  const handleReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTicket || !replyMessage.trim()) return;
+
+    setSendingReply(true);
+    try {
+      const res = await ticketsAPI.reply(selectedTicket.id, replyMessage);
+      
+      // Refresh details to show new message
+      const updated = await ticketsAPI.getDetails(selectedTicket.id);
+      setSelectedTicket(updated);
+      setReplyMessage('');
+      
+      // Update list status if changed
+      if (res.newStatus) {
+        setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: res.newStatus as any } : t));
+      }
+    } catch (err) {
+      alert('Failed to transmit reply.');
+    } finally {
+      setSendingReply(false);
     }
   };
 
@@ -111,7 +161,7 @@ export default function TicketManager() {
 
       <div className="grid lg:grid-cols-12 gap-8">
         {/* Ticket List */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className="lg:col-span-5 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
           {loading ? (
             <div className="flex justify-center py-20"><Zap className="animate-spin text-neo-cyan w-8 h-8" /></div>
           ) : filteredTickets.length === 0 ? (
@@ -120,7 +170,7 @@ export default function TicketManager() {
             filteredTickets.map(ticket => (
               <div 
                 key={ticket.id}
-                onClick={() => setSelectedTicket(ticket)}
+                onClick={() => handleSelectTicket(ticket)}
                 className={`neo-glass p-6 rounded-2xl border transition-all cursor-pointer group relative overflow-hidden ${
                   selectedTicket?.id === ticket.id ? 'border-neo-cyan/40 bg-neo-cyan/5' : 'border-white/5 hover:border-white/20'
                 }`}
@@ -150,11 +200,12 @@ export default function TicketManager() {
           )}
         </div>
 
-        {/* Details Panel */}
+        {/* Details & Chat Panel */}
         <div className="lg:col-span-7">
           {selectedTicket ? (
-            <div className="neo-glass rounded-3xl border-neo-cyan/20 p-8 space-y-8 sticky top-24 animate-fade-in">
-              <div className="flex items-start justify-between border-b border-white/5 pb-6">
+            <div className="neo-glass rounded-3xl border-neo-cyan/20 p-8 space-y-6 sticky top-24 animate-fade-in flex flex-col max-h-[85vh]">
+              {/* Ticket Header */}
+              <div className="flex items-start justify-between border-b border-white/5 pb-4 shrink-0">
                 <div>
                   <h2 className="text-2xl font-heading font-black text-white uppercase tracking-tight">{selectedTicket.category}</h2>
                   <p className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest mt-1">Signal Protocol ID: #{selectedTicket.id}</p>
@@ -175,71 +226,86 @@ export default function TicketManager() {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-1">
-                  <div className="flex items-center gap-2 text-[8px] font-mono text-neo-slate/40 uppercase tracking-widest"><User className="w-3 h-3" /> Source Identifier</div>
+              {/* Sender Info */}
+              <div className="grid md:grid-cols-2 gap-4 shrink-0">
+                <div className="p-3 rounded-2xl bg-white/5 border border-white/5 space-y-1">
+                  <div className="flex items-center gap-2 text-[8px] font-mono text-neo-slate/40 uppercase tracking-widest"><User className="w-3 h-3" /> Source</div>
                   <div className="text-sm font-bold text-white uppercase">{selectedTicket.name}</div>
                   {selectedTicket.team_name && (
                     <div className="text-[10px] font-mono text-neo-cyan uppercase mt-1">
-                      Unit: {selectedTicket.team_name} ({selectedTicket.school_name})
+                      Unit: {selectedTicket.team_name}
                     </div>
                   )}
                 </div>
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-1">
-                  <div className="flex items-center gap-2 text-[8px] font-mono text-neo-slate/40 uppercase tracking-widest"><Mail className="w-3 h-3" /> Comm Endpoint</div>
-                  <div className="text-sm font-bold text-neo-cyan">{selectedTicket.email}</div>
-                  <a href={`mailto:${selectedTicket.email}?subject=NRPC Support: ${selectedTicket.category}`} className="text-[8px] font-mono text-neo-slate/40 uppercase hover:text-white underline mt-1 block">
-                    Reply via secure link
-                  </a>
+                <div className="p-3 rounded-2xl bg-white/5 border border-white/5 space-y-1">
+                  <div className="flex items-center gap-2 text-[8px] font-mono text-neo-slate/40 uppercase tracking-widest"><Mail className="w-3 h-3" /> Contact</div>
+                  <div className="text-sm font-bold text-neo-cyan truncate">{selectedTicket.email}</div>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.3em]">Signal Payload</div>
-                <div className="p-6 rounded-2xl bg-neo-void/50 border border-white/5 text-neo-slate/80 text-sm leading-relaxed whitespace-pre-wrap">
-                  {selectedTicket.description}
-                </div>
-              </div>
-
-              {selectedTicket.file_path && (
-                <div className="space-y-3">
-                  <div className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.3em]">Visual Evidence Artifact</div>
-                  <div className="relative group rounded-2xl overflow-hidden border border-white/10 aspect-video bg-neo-void flex items-center justify-center">
-                    <img 
-                      src={getFileUrl(selectedTicket.file_path)} 
-                      alt="Ticket Evidence" 
-                      className="max-h-full w-auto object-contain"
-                    />
-                    <a 
-                      href={getFileUrl(selectedTicket.file_path)} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="absolute inset-0 bg-neo-void/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 text-neo-cyan font-mono text-xs uppercase font-black"
-                    >
-                      <Eye className="w-5 h-5" /> Open full-res source
-                    </a>
+              {/* Chat History */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6 pr-2 bg-neo-void/30 rounded-2xl p-4 border border-white/5">
+                {/* Original Description */}
+                <div className="flex justify-start">
+                  <div className="max-w-[90%] p-4 rounded-2xl border bg-white/5 border-white/10 text-neo-slate/80 rounded-bl-none">
+                    <div className="text-[8px] font-mono uppercase opacity-50 mb-1">Incoming Transmission // {new Date(selectedTicket.created_at).toLocaleTimeString()}</div>
+                    <div className="text-sm whitespace-pre-wrap">{selectedTicket.description}</div>
+                    {selectedTicket.file_path && (
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <a href={getFileUrl(selectedTicket.file_path)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-mono text-neo-cyan hover:underline">
+                          <Eye className="w-3 h-3" /> View Evidence Artifact
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
 
-              <div className="pt-6 border-t border-white/5">
-                <div className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-[0.3em] mb-4">Triage Actions</div>
-                <div className="flex flex-wrap gap-4">
+                {/* Messages */}
+                {selectedTicket.messages?.map(msg => (
+                  <div key={msg.id} className={`flex ${msg.sender_role === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] p-4 rounded-2xl border ${msg.sender_role === 'admin' ? 'bg-neo-cyan/10 border-neo-cyan/20 text-white rounded-br-none' : 'bg-white/5 border-white/10 text-neo-slate/80 rounded-bl-none'}`}>
+                      <div className="text-[8px] font-mono uppercase opacity-50 mb-1">{msg.sender_role === 'admin' ? 'Command Response' : 'Operator Reply'} // {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                      <div className="text-sm whitespace-pre-wrap">{msg.message}</div>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Reply Box */}
+              <div className="shrink-0 space-y-4">
+                <form onSubmit={handleReply} className="flex gap-4">
+                  <input
+                    type="text"
+                    value={replyMessage}
+                    onChange={e => setReplyMessage(e.target.value)}
+                    placeholder="Transmit instructions to operator..."
+                    className="flex-1 bg-neo-void/50 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:border-neo-cyan/40 outline-none transition-all"
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={sendingReply || !replyMessage.trim()}
+                    className="p-3 bg-neo-cyan text-neo-void rounded-xl hover:shadow-[0_0_15px_rgba(102,252,241,0.4)] transition-all disabled:opacity-50"
+                  >
+                    {sendingReply ? <Zap className="w-5 h-5 animate-pulse" /> : <Send className="w-5 h-5" />}
+                  </button>
+                </form>
+
+                <div className="flex gap-2 justify-end">
                   {[
-                    { s: 'Open', color: 'bg-neo-cyan text-neo-void', icon: MessageSquare },
-                    { s: 'Pending', color: 'bg-neo-amber text-neo-void', icon: Clock },
-                    { s: 'Resolved', color: 'bg-emerald-500 text-white', icon: CheckCircle2 }
+                    { s: 'Open', color: 'text-neo-cyan border-neo-cyan/30 hover:bg-neo-cyan/10' },
+                    { s: 'Pending', color: 'text-neo-amber border-neo-amber/30 hover:bg-neo-amber/10' },
+                    { s: 'Resolved', color: 'text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10' }
                   ].map(action => (
                     <button
                       key={action.s}
                       onClick={() => handleUpdateStatus(selectedTicket.id, action.s)}
                       disabled={selectedTicket.status === action.s}
-                      className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl font-mono text-[10px] font-black uppercase tracking-widest transition-all ${
-                        selectedTicket.status === action.s ? 'opacity-20 cursor-not-allowed border border-white/10' : `${action.color} hover:scale-[1.02] shadow-lg`
+                      className={`px-3 py-1.5 rounded-lg border text-[9px] font-mono uppercase tracking-widest transition-all ${
+                        selectedTicket.status === action.s ? 'opacity-50 cursor-not-allowed bg-white/5 border-white/5 text-white' : action.color
                       }`}
                     >
-                      <action.icon className="w-4 h-4" />
-                      Set {action.s}
+                      Mark {action.s}
                     </button>
                   ))}
                 </div>
