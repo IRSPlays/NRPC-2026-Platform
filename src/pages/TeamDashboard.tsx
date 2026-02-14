@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Upload, FileText, Activity, Target, ExternalLink, Eye, Users, Radio } from 'lucide-react';
+import { Trophy, Upload, FileText, Activity, Target, ExternalLink, Eye, Users, Radio, Video, ClipboardCheck, Clock, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { scoresAPI, submissionsAPI, getFileUrl } from '../lib/api';
 import { Score, Submission } from '../types';
@@ -57,9 +57,21 @@ export default function TeamDashboard() {
     return Math.max(...scores.map(s => s.total_score));
   };
 
-  const getPosterScore = (sub: Submission) => {
-    if (!sub.concept_score) return 0;
-    return (sub.concept_score || 0) + (sub.future_score || 0) + (sub.organization_score || 0) + (sub.aesthetics_score || 0);
+  const posterSubmissions = submissions.filter(s => s.submission_type !== 'robot_run');
+  const robotSubmissions = submissions.filter(s => s.submission_type === 'robot_run');
+
+  const getPosterScore = () => {
+    // Find the latest scored poster
+    const scoredPoster = posterSubmissions.find(s => s.concept_score !== undefined && s.concept_score > 0);
+    if (!scoredPoster) return '--';
+    return (scoredPoster.concept_score || 0) + (scoredPoster.future_score || 0) + (scoredPoster.organization_score || 0) + (scoredPoster.aesthetics_score || 0);
+  };
+
+  const getRobotPerformanceScore = () => {
+    // Find the latest scored robot run
+    const scoredRun = robotSubmissions.find(s => s.concept_score !== undefined && s.concept_score > 0);
+    if (!scoredRun) return '--';
+    return (scoredRun.concept_score || 0) + (scoredRun.future_score || 0) + (scoredRun.organization_score || 0) + (scoredRun.aesthetics_score || 0);
   };
 
   if (loading) {
@@ -93,7 +105,7 @@ export default function TeamDashboard() {
             className="btn-neo-amber flex items-center gap-3 py-4 px-8"
           >
             <Upload className="w-5 h-5" />
-            Submit Poster
+            New Submission
           </button>
         </div>
       </section>
@@ -103,8 +115,8 @@ export default function TeamDashboard() {
         {[
           { label: 'Total Missions', val: scores.length, icon: Radio, color: 'text-neo-cyan' },
           { label: 'Highest Score', val: getBestScore(), icon: Target, color: 'text-neo-amber', sub: '/ 155 PTS' },
-          { label: 'Submissions', val: submissions.length, icon: FileText, color: 'text-neo-cyan' },
-          { label: 'Poster Score', val: submissions[0] && submissions[0].concept_score ? getPosterScore(submissions[0]) : '--', icon: Activity, color: 'text-neo-amber', sub: '/ 100 PTS' },
+          { label: 'Poster Score', val: getPosterScore(), icon: FileText, color: 'text-neo-cyan', sub: '/ 100 PTS' },
+          { label: 'Perf. Score', val: getRobotPerformanceScore(), icon: Video, color: 'text-neo-amber', sub: '/ 100 PTS' },
         ].map((m, i) => (
           <div key={i} className="neo-glass rounded-2xl p-6 border-white/5 relative group hover:border-neo-cyan/30 transition-all">
             <div className="flex items-start justify-between mb-4">
@@ -158,51 +170,95 @@ export default function TeamDashboard() {
           </div>
         </div>
 
-        {/* Submissions */}
-        <div className="neo-glass rounded-3xl border-white/5 overflow-hidden">
-          <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-            <h2 className="text-sm font-mono font-bold text-white uppercase tracking-[0.2em] flex items-center gap-2">
-              <FileText className="w-4 h-4 text-neo-amber" />
-              Poster Submissions
-            </h2>
-          </div>
-          
-          <div className="divide-y divide-white/5">
-            {submissions.length === 0 ? (
-              <div className="p-12 text-center">
-                <button onClick={() => navigate('/submit')} className="text-xs font-mono text-neo-amber hover:text-white uppercase tracking-widest transition-colors">
-                  [!] Click here to submit your poster
-                </button>
-              </div>
-            ) : (
-              submissions.map((sub) => (
-                <div key={sub.id} className="p-6 hover:bg-white/[0.02] transition-colors">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="space-y-1">
-                      <div className="text-sm font-bold text-white truncate max-w-[200px]">{sub.original_filename}</div>
-                      <div className="text-[10px] font-mono text-neo-slate/40 uppercase">{formatDate(sub.submitted_at)}</div>
+        {/* Submissions Section (Split into Posters & Robot Runs) */}
+        <div className="space-y-8">
+          {/* Poster Submissions */}
+          <div className="neo-glass rounded-3xl border-white/5 overflow-hidden">
+            <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+              <h2 className="text-sm font-mono font-bold text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                <FileText className="w-4 h-4 text-neo-cyan" />
+                Research Posters
+              </h2>
+            </div>
+            <div className="divide-y divide-white/5">
+              {posterSubmissions.length === 0 ? (
+                <div className="p-8 text-center text-neo-slate/30 font-mono text-xs uppercase">No posters submitted</div>
+              ) : (
+                posterSubmissions.map((sub) => (
+                  <div key={sub.id} className="p-6 hover:bg-white/[0.02] transition-colors">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="space-y-1">
+                        <div className="text-sm font-bold text-white truncate max-w-[200px]">{sub.original_filename}</div>
+                        <div className="text-[10px] font-mono text-neo-slate/40 uppercase">{formatDate(sub.submitted_at)}</div>
+                      </div>
+                      {sub.concept_score ? (
+                        <span className="px-3 py-1 bg-neo-cyan/10 border border-neo-cyan/20 text-neo-cyan text-[10px] font-mono uppercase rounded-full">
+                          Scored: {(sub.concept_score || 0) + (sub.future_score || 0) + (sub.organization_score || 0) + (sub.aesthetics_score || 0)}
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 bg-white/5 border border-white/10 text-neo-slate/40 text-[10px] font-mono uppercase rounded-full animate-pulse">Pending...</span>
+                      )}
                     </div>
-                    {sub.concept_score ? (
-                      <span className="px-3 py-1 bg-neo-cyan/10 border border-neo-cyan/20 text-neo-cyan text-[10px] font-mono uppercase rounded-full">Scored</span>
-                    ) : (
-                      <span className="px-3 py-1 bg-white/5 border border-white/10 text-neo-slate/40 text-[10px] font-mono uppercase rounded-full animate-pulse">Pending...</span>
-                    )}
+                    <div className="flex items-center gap-4">
+                      {sub.submission_type === 'link' ? (
+                        <a href={sub.external_link} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono text-neo-cyan hover:neo-text-glow flex items-center gap-2 uppercase tracking-widest border border-neo-cyan/20 px-3 py-2 rounded-lg bg-neo-cyan/5">
+                          <ExternalLink className="w-3 h-3" /> View Link
+                        </a>
+                      ) : (
+                        <a href={getFileUrl(sub.file_path)} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono text-neo-cyan hover:neo-text-glow flex items-center gap-2 uppercase tracking-widest border border-neo-cyan/20 px-3 py-2 rounded-lg bg-neo-cyan/5">
+                          <Eye className="w-3 h-3" /> View File
+                        </a>
+                      )}
+                    </div>
                   </div>
+                ))
+              )}
+            </div>
+          </div>
 
-                  <div className="flex items-center gap-4">
-                    {sub.submission_type === 'link' ? (
-                      <a href={sub.external_link} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono text-neo-cyan hover:neo-text-glow flex items-center gap-2 uppercase tracking-widest border border-neo-cyan/20 px-3 py-2 rounded-lg bg-neo-cyan/5">
-                        <ExternalLink className="w-3 h-3" /> View Link
-                      </a>
-                    ) : (
-                      <a href={getFileUrl(sub.file_path)} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono text-neo-cyan hover:neo-text-glow flex items-center gap-2 uppercase tracking-widest border border-neo-cyan/20 px-3 py-2 rounded-lg bg-neo-cyan/5">
-                        <Eye className="w-3 h-3" /> View File
-                      </a>
-                    )}
+          {/* Robot Performance Submissions */}
+          <div className="neo-glass rounded-3xl border-white/5 overflow-hidden">
+            <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+              <h2 className="text-sm font-mono font-bold text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                <Video className="w-4 h-4 text-neo-amber" />
+                Robot Performance
+              </h2>
+            </div>
+            <div className="divide-y divide-white/5">
+              {robotSubmissions.length === 0 ? (
+                <div className="p-8 text-center text-neo-slate/30 font-mono text-xs uppercase">No performance runs submitted</div>
+              ) : (
+                robotSubmissions.map((sub) => (
+                  <div key={sub.id} className="p-6 hover:bg-white/[0.02] transition-colors">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="space-y-1">
+                        <div className="text-sm font-bold text-white truncate max-w-[200px]">{sub.original_filename}</div>
+                        <div className="text-[10px] font-mono text-neo-slate/40 uppercase">{formatDate(sub.submitted_at)}</div>
+                      </div>
+                      {sub.concept_score ? (
+                        <span className="px-3 py-1 bg-neo-amber/10 border border-neo-amber/20 text-neo-amber text-[10px] font-mono uppercase rounded-full">
+                          Scored: {(sub.concept_score || 0) + (sub.future_score || 0) + (sub.organization_score || 0) + (sub.aesthetics_score || 0)}
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 bg-white/5 border border-white/10 text-neo-slate/40 text-[10px] font-mono uppercase rounded-full animate-pulse">Pending...</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {sub.external_link && (
+                        <a href={sub.external_link} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono text-neo-amber hover:text-white flex items-center gap-2 uppercase tracking-widest">
+                          <Video className="w-3 h-3" /> Watch Video
+                        </a>
+                      )}
+                      {sub.file_path && (
+                        <a href={getFileUrl(sub.file_path)} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono text-neo-cyan hover:text-white flex items-center gap-2 uppercase tracking-widest">
+                          <ClipboardCheck className="w-3 h-3" /> Check Sheet
+                        </a>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
