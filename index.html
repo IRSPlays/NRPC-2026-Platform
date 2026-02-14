@@ -33,11 +33,12 @@
     
     <!-- Dynamic URL fallback -->
     <script>
-      const baseUrl = window.location.origin;
+      // Force canonical to www
+      const canonicalUrl = 'https://www.nrpc-platform.app/';
       if (!document.querySelector('link[rel="canonical"]')) {
         const link = document.createElement('link');
         link.rel = 'canonical';
-        link.href = baseUrl + '/';
+        link.href = canonicalUrl;
         document.head.appendChild(link);
       }
     </script>
