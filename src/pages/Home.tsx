@@ -56,7 +56,7 @@ export default function Home() {
         <div className="space-y-4 md:space-y-6">
           <div className="inline-flex items-center gap-2 px-3 md:px-4 py-1.5 rounded-full border border-neo-cyan/30 bg-neo-cyan/5 text-neo-cyan text-[8px] md:text-xs font-mono tracking-[0.2em] uppercase mb-2 md:mb-4 neo-text-glow">
             <Cpu className="w-3 h-3 animate-spin" />
-            Registration Open // Operational // NRPC-2026
+            System Status: Registration Open // Operational // NRPC-2026
           </div>
           
           <div className="flex justify-center mb-6 md:mb-12">
