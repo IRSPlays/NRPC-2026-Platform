@@ -252,6 +252,13 @@ export const ticketsAPI = {
 
   getAll: (): Promise<Ticket[]> => fetchWithAuth<Ticket[]>('/api/tickets'),
 
+  getDetails: (id: number): Promise<Ticket> => fetchWithAuth<Ticket>(`/api/tickets/${id}`),
+
+  reply: (id: number, message: string): Promise<{ success: boolean; newStatus: string }> => fetchWithAuth<{ success: boolean; newStatus: string }>(`/api/tickets/${id}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  }),
+
   updateStatus: (id: number, status: string): Promise<{ success: boolean }> => fetchWithAuth<{ success: boolean }>(`/api/tickets/${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),

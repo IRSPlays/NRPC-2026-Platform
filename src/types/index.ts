@@ -122,6 +122,14 @@ export interface Announcement {
   expires_at?: string;
 }
 
+export interface TicketMessage {
+  id: number;
+  ticket_id: number;
+  sender_role: 'admin' | 'user';
+  message: string;
+  created_at: string;
+}
+
 export interface Ticket {
   id: number;
   team_id?: number;
@@ -135,4 +143,5 @@ export interface Ticket {
   created_at: string;
   team_name?: string;
   school_name?: string;
+  messages?: TicketMessage[];
 }

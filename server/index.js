@@ -1173,6 +1173,80 @@ app.post('/api/tickets', publicLimiter, uploadTicket.single('file'), async (req,
   }
 });
 
+// Get single ticket with messages (admin or ticket owner)
+app.get('/api/tickets/:id', async (req, res) => {
+  const { id } = req.params;
+  const adminToken = verifyToken(req.cookies.admin_auth);
+  const teamToken = verifyToken(req.cookies.team_auth);
+  const isAdmin = !!adminToken && adminToken.type === 'admin';
+  const isTeam = !!teamToken && teamToken.type === 'team';
+
+  try {
+    const db = await getDb();
+    const ticket = await db.get(`
+      SELECT t.*, teams.team_name, teams.school_name 
+      FROM tickets t 
+      LEFT JOIN teams ON t.team_id = teams.id 
+      WHERE t.id = ?
+    `, [id]);
+
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+
+    // Authorization: Admin or Owner Team
+    // For public users, we rely on them knowing the ID (in future, access_token)
+    if (!isAdmin && ticket.team_id && (!isTeam || String(teamToken.teamId) !== String(ticket.team_id))) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const messages = await db.all('SELECT * FROM ticket_messages WHERE ticket_id = ? ORDER BY created_at ASC', [id]);
+    
+    res.json({ ...ticket, messages });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reply to ticket
+app.post('/api/tickets/:id/messages', async (req, res) => {
+  const { id } = req.params;
+  const { message, sender_role } = req.body; // sender_role verified by auth
+
+  const adminToken = verifyToken(req.cookies.admin_auth);
+  const teamToken = verifyToken(req.cookies.team_auth);
+  const isAdmin = !!adminToken && adminToken.type === 'admin';
+  
+  // Determine role securely
+  const role = isAdmin ? 'admin' : 'user';
+  
+  if (!message) return res.status(400).json({ error: 'Message required' });
+
+  try {
+    const db = await getDb();
+    const ticket = await db.get('SELECT * FROM tickets WHERE id = ?', [id]);
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+
+    // If team ticket, verify ownership
+    if (role === 'user' && ticket.team_id) {
+      if (!teamToken || String(teamToken.teamId) !== String(ticket.team_id)) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+    }
+
+    await db.run(
+      'INSERT INTO ticket_messages (ticket_id, sender_role, message) VALUES (?, ?, ?)',
+      [id, role, message]
+    );
+
+    // Auto-update status
+    const newStatus = role === 'admin' ? 'Pending' : 'Open';
+    await db.run('UPDATE tickets SET status = ? WHERE id = ?', [newStatus, id]);
+
+    res.json({ success: true, newStatus });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get all tickets (admin only)
 app.get('/api/tickets', requireAdmin, async (req, res) => {
   try {

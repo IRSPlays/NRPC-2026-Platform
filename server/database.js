@@ -121,6 +121,16 @@ async function initDatabase() {
     )
   `);
 
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS ticket_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER REFERENCES tickets(id) ON DELETE CASCADE,
+      sender_role TEXT CHECK(sender_role IN ('admin', 'user')) NOT NULL,
+      message TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Migration: Check and add team_id to tickets if missing
   try {
     const tableInfo = await db.all("PRAGMA table_info(tickets)");
@@ -177,6 +187,7 @@ export async function backupDatabase() {
   const scores = await database.all('SELECT * FROM scores');
   const announcements = await database.all('SELECT * FROM announcements');
   const tickets = await database.all('SELECT * FROM tickets');
+  const ticket_messages = await database.all('SELECT * FROM ticket_messages');
 
   const backup = {
     timestamp: new Date().toISOString(),
@@ -184,7 +195,8 @@ export async function backupDatabase() {
     submissions,
     scores,
     announcements,
-    tickets
+    tickets,
+    ticket_messages
   };
 
   if (!fs.existsSync(backupDir)) {
@@ -223,6 +235,7 @@ export async function restoreDatabase(backupData) {
     await database.run('DELETE FROM teams');
     await database.run('DELETE FROM announcements');
     await database.run('DELETE FROM tickets');
+    await database.run('DELETE FROM ticket_messages');
 
     for (const team of backupData.teams) {
       await database.run(
@@ -259,6 +272,15 @@ export async function restoreDatabase(backupData) {
         await database.run(
           'INSERT INTO tickets (id, team_id, name, email, category, urgency, description, file_path, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           [ticket.id, ticket.team_id || null, ticket.name, ticket.email, ticket.category, ticket.urgency, ticket.description, ticket.file_path, ticket.status, ticket.created_at]
+        );
+      }
+    }
+
+    if (backupData.ticket_messages) {
+      for (const msg of backupData.ticket_messages) {
+        await database.run(
+          'INSERT INTO ticket_messages (id, ticket_id, sender_role, message, created_at) VALUES (?, ?, ?, ?, ?)',
+          [msg.id, msg.ticket_id, msg.sender_role, msg.message, msg.created_at]
         );
       }
     }
