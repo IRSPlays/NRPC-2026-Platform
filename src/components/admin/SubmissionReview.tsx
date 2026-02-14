@@ -33,7 +33,8 @@ export default function SubmissionReview() {
     try {
       setLoading(true);
       const data = await submissionsAPI.getAll();
-      setSubmissions(data);
+      // Filter out robot_run submissions (they go to RobotPerformanceReview)
+      setSubmissions(data.filter(s => s.submission_type !== 'robot_run'));
     } catch (err: any) {
       setError(err.message || 'Failed to fetch submissions');
     } finally {

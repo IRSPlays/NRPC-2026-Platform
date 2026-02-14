@@ -232,8 +232,9 @@ export default function Submit() {
 
     setLoading(true);
     try {
-      await submissionsAPI.submitLink(Number(teamId), robotVideoLink, robotVideoFilename, 'link');
-      await submissionsAPI.uploadFile(Number(teamId), robotSheetFile, robotSheetFilename, 'file');
+      // Use 'robot_run' type for both video and sheet so they go to the correct admin tab
+      await submissionsAPI.submitLink(Number(teamId), robotVideoLink, robotVideoFilename, 'robot_run');
+      await submissionsAPI.uploadFile(Number(teamId), robotSheetFile, robotSheetFilename, 'robot_run');
 
       setSuccess('Robot performance submission successful! Returning to dashboard...');
       setTimeout(() => navigate('/team-dashboard'), 2000);
