@@ -12,10 +12,10 @@ import {
   User, 
   Mail, 
   Activity, 
-  Zap,
-  ArrowRight,
-  ShieldAlert,
-  Send
+  Zap, 
+  ArrowRight, 
+  ShieldAlert, 
+  Send 
 } from 'lucide-react';
 import { ticketsAPI, getFileUrl } from '../../lib/api';
 import { Ticket } from '../../types';
@@ -56,22 +56,21 @@ export default function TicketManager() {
     }
   };
 
-  // When selecting a ticket, fetch its full details (including messages)
   const handleSelectTicket = async (ticket: Ticket) => {
+    // When clicking a ticket, fetch fresh details including messages
     try {
       const details = await ticketsAPI.getDetails(ticket.id);
       setSelectedTicket(details);
     } catch (err) {
-      console.error("Failed to load ticket details");
-      // Fallback to basic info if fetch fails
-      setSelectedTicket(ticket);
+      console.error("Failed to load ticket details", err);
+      setSelectedTicket(ticket); // Fallback
     }
   };
 
   const handleUpdateStatus = async (id: number, status: string) => {
     try {
       await ticketsAPI.updateStatus(id, status);
-      loadTickets();
+      loadTickets(); // Refresh list
       if (selectedTicket?.id === id) {
         setSelectedTicket({ ...selectedTicket, status: status as any });
       }
@@ -99,12 +98,12 @@ export default function TicketManager() {
     try {
       const res = await ticketsAPI.reply(selectedTicket.id, replyMessage);
       
-      // Refresh details to show new message
+      // Refresh details to show the new message immediately
       const updated = await ticketsAPI.getDetails(selectedTicket.id);
       setSelectedTicket(updated);
       setReplyMessage('');
       
-      // Update list status if changed
+      // Update the list status if it changed (e.g. to Pending)
       if (res.newStatus) {
         setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: res.newStatus as any } : t));
       }
@@ -203,7 +202,7 @@ export default function TicketManager() {
         {/* Details & Chat Panel */}
         <div className="lg:col-span-7">
           {selectedTicket ? (
-            <div className="neo-glass rounded-3xl border-neo-cyan/20 p-8 space-y-6 sticky top-24 animate-fade-in flex flex-col max-h-[85vh]">
+            <div className="neo-glass rounded-3xl border-neo-cyan/20 p-8 space-y-6 sticky top-24 animate-fade-in flex flex-col h-[85vh]">
               {/* Ticket Header */}
               <div className="flex items-start justify-between border-b border-white/5 pb-4 shrink-0">
                 <div>
@@ -229,7 +228,7 @@ export default function TicketManager() {
               {/* Sender Info */}
               <div className="grid md:grid-cols-2 gap-4 shrink-0">
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/5 space-y-1">
-                  <div className="flex items-center gap-2 text-[8px] font-mono text-neo-slate/40 uppercase tracking-widest"><User className="w-3 h-3" /> Source</div>
+                  <div className="flex items-center gap-2 text-[8px] font-mono text-neo-slate/40 uppercase tracking-widest"><User className="w-3 h-3" /> Source Identifier</div>
                   <div className="text-sm font-bold text-white uppercase">{selectedTicket.name}</div>
                   {selectedTicket.team_name && (
                     <div className="text-[10px] font-mono text-neo-cyan uppercase mt-1">
@@ -238,13 +237,13 @@ export default function TicketManager() {
                   )}
                 </div>
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/5 space-y-1">
-                  <div className="flex items-center gap-2 text-[8px] font-mono text-neo-slate/40 uppercase tracking-widest"><Mail className="w-3 h-3" /> Contact</div>
+                  <div className="flex items-center gap-2 text-[8px] font-mono text-neo-slate/40 uppercase tracking-widest"><Mail className="w-3 h-3" /> Comm Endpoint</div>
                   <div className="text-sm font-bold text-neo-cyan truncate">{selectedTicket.email}</div>
                 </div>
               </div>
 
               {/* Chat History */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6 pr-2 bg-neo-void/30 rounded-2xl p-4 border border-white/5">
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2 bg-neo-void/30 rounded-2xl p-4 border border-white/5">
                 {/* Original Description */}
                 <div className="flex justify-start">
                   <div className="max-w-[90%] p-4 rounded-2xl border bg-white/5 border-white/10 text-neo-slate/80 rounded-bl-none">
@@ -312,7 +311,7 @@ export default function TicketManager() {
               </div>
             </div>
           ) : (
-            <div className="neo-glass rounded-3xl border-white/5 p-20 flex flex-col items-center justify-center text-center space-y-6 opacity-40 h-[600px]">
+            <div className="neo-glass rounded-3xl border-white/5 p-20 flex flex-col items-center justify-center text-center space-y-6 opacity-40 h-full">
               <div className="w-20 h-20 rounded-full border-2 border-dashed border-neo-slate/20 flex items-center justify-center">
                 <ShieldAlert className="w-10 h-10 text-neo-slate/20" />
               </div>
