@@ -776,6 +776,22 @@ app.post('/api/scores', requireAdminOrJudge, async (req, res) => {
   }
 });
 
+// Get all scores with rankings (admin only)
+// Returns Championship rankings
+app.get('/api/scores/leaderboard', requireAdmin, async (req, res) => {
+  try {
+    const db = await getDb();
+    const teams = await db.all('SELECT * FROM teams');
+    const scores = await db.all('SELECT * FROM scores');
+    const submissions = await db.all('SELECT * FROM submissions');
+    
+    const rankings = calculateChampionshipRankings(teams, scores, submissions);
+    res.json(rankings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get single score by ID (admin/judge)
 app.get('/api/scores/:id', requireAdminOrJudge, async (req, res) => {
   const { id } = req.params;
@@ -937,22 +953,6 @@ app.get('/api/scores/team/:teamId', async (req, res) => {
     `, [teamId]);
     
     res.json(scores);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get all scores with rankings (admin only)
-// Returns Championship rankings
-app.get('/api/scores/leaderboard', requireAdmin, async (req, res) => {
-  try {
-    const db = await getDb();
-    const teams = await db.all('SELECT * FROM teams');
-    const scores = await db.all('SELECT * FROM scores');
-    const submissions = await db.all('SELECT * FROM submissions');
-    
-    const rankings = calculateChampionshipRankings(teams, scores, submissions);
-    res.json(rankings);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
