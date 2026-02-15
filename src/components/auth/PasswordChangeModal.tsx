@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Lock, Save, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Lock, Save, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { authAPI } from '../../lib/api';
 
@@ -8,6 +8,8 @@ export default function PasswordChangeModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -97,20 +99,38 @@ export default function PasswordChangeModal() {
             )}
 
             <div className="space-y-4">
-              <input
-                type="password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                placeholder="New Password"
-                className="w-full bg-neo-void/50 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:border-neo-amber/40 outline-none"
-              />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="Confirm Password"
-                className="w-full bg-neo-void/50 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:border-neo-amber/40 outline-none"
-              />
+              <div className="relative">
+                <input
+                  type={showNew ? "text" : "password"}
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="New Password"
+                  className="w-full bg-neo-void/50 border border-white/10 rounded-xl px-4 py-3 pr-10 text-white font-mono text-sm focus:border-neo-amber/40 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNew(!showNew)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neo-slate/40 hover:text-neo-amber"
+                >
+                  {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm Password"
+                  className="w-full bg-neo-void/50 border border-white/10 rounded-xl px-4 py-3 pr-10 text-white font-mono text-sm focus:border-neo-amber/40 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neo-slate/40 hover:text-neo-amber"
+                >
+                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <button
