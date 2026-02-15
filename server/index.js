@@ -324,50 +324,27 @@ app.post('/api/admin/system/restore', requireBackupKey, uploadBackup.single('bac
   if (!req.file) return res.status(400).json({ error: 'No backup file provided' });
 
   try {
-    const zipPath = req.file.path;
-    
-    // Extract to temp location first
-    const extractPath = path.join(DATA_DIR, 'temp_extracted');
-    if (fs.existsSync(extractPath)) fs.rmSync(extractPath, { recursive: true, force: true });
-    fs.mkdirSync(extractPath);
+        const zipPath = req.file.path;
+        await restoreFromZip(zipPath);
+        if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+        res.json({ success: true, message: 'System restored successfully. State updated.' });
+      } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    await fs.createReadStream(zipPath)
-      .pipe(unzipper.Extract({ path: extractPath }))
-      .promise();
+// RESTORE JSON (Legacy Support for local tool)
+app.post('/api/admin/system/restore-json', requireBackupKey, async (req, res) => {
+  const { backupData } = req.body;
+  if (!backupData) return res.status(400).json({ error: 'No backup data provided' });
 
-    // Verify integrity (check if database.sqlite exists)
-    if (!fs.existsSync(path.join(extractPath, 'database.sqlite'))) {
-      throw new Error('Invalid backup: database.sqlite missing');
-    }
-
-    // --- CRITICAL ZONE: OVERWRITE ---
-    
-    // 1. Close DB Connection? (Ideally, but sqlite handles file replacement okay usually if WAL)
-    // For safety, we just overwrite.
-    
-    // Move Database
-    fs.copyFileSync(path.join(extractPath, 'database.sqlite'), path.join(DATA_DIR, 'database.sqlite'));
-    
-    // Move Uploads
-    const uploadsSource = path.join(extractPath, 'uploads');
-    const uploadsDest = path.join(DATA_DIR, 'uploads');
-    
-    if (fs.existsSync(uploadsSource)) {
-      // Remove old uploads to ensure clean state? Or merge? 
-      // Clean replace is safer for "Restore" concept.
-      if (fs.existsSync(uploadsDest)) fs.rmSync(uploadsDest, { recursive: true, force: true });
-      fs.cpSync(uploadsSource, uploadsDest, { recursive: true });
-    }
-
-    // Cleanup
-    fs.unlinkSync(zipPath);
-    fs.rmSync(extractPath, { recursive: true, force: true });
-
-    res.json({ success: true, message: 'System restored successfully. Restart recommended.' });
-    
-    // Optional: Trigger restart if running in a manager like pm2 or Railway
-    // process.exit(0); 
+  try {
+    await restoreDatabase(backupData);
+    res.json({ success: true, message: 'JSON State Restored Successfully' });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
     console.error('Restore Failed:', err);
     res.status(500).json({ error: err.message });
   }

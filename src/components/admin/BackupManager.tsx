@@ -31,7 +31,7 @@ export default function BackupManager() {
     
     try {
       const data = await backupAPI.list();
-      setBackups(data.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime()));
+      setBackups(data.sort((a, b) => new Date(b.created || 0).getTime() - new Date(a.created || 0).getTime()));
     } catch (err: any) {
       setError(err.message || 'Data Retrieval Failure');
     } finally {

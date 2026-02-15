@@ -655,6 +655,9 @@ video {
 .mt-2 {
   margin-top: 0.5rem;
 }
+.block {
+  display: block;
+}
 .flex {
   display: flex;
 }
@@ -688,6 +691,15 @@ video {
 .h-\[54px\] {
   height: 54px;
 }
+.h-12 {
+  height: 3rem;
+}
+.h-16 {
+  height: 4rem;
+}
+.h-8 {
+  height: 2rem;
+}
 .min-h-screen {
   min-height: 100vh;
 }
@@ -718,8 +730,23 @@ video {
 .w-full {
   width: 100%;
 }
+.w-12 {
+  width: 3rem;
+}
+.w-16 {
+  width: 4rem;
+}
+.w-8 {
+  width: 2rem;
+}
 .max-w-6xl {
   max-width: 72rem;
+}
+.max-w-md {
+  max-width: 28rem;
+}
+.shrink-0 {
+  flex-shrink: 0;
 }
 .-translate-y-1\/2 {
   --tw-translate-y: -50%;
@@ -841,6 +868,9 @@ video {
 .rounded-xl {
   border-radius: 0.75rem;
 }
+.rounded-2xl {
+  border-radius: 1rem;
+}
 .border {
   border-width: 1px;
 }
@@ -865,6 +895,9 @@ video {
 .border-white\/5 {
   border-color: rgb(255 255 255 / 0.05);
 }
+.border-neo-amber\/20 {
+  border-color: rgb(255 179 0 / 0.2);
+}
 .bg-neo-amber\/10 {
   background-color: rgb(255 179 0 / 0.1);
 }
@@ -887,6 +920,13 @@ video {
 .bg-white\/\[0\.02\] {
   background-color: rgb(255 255 255 / 0.02);
 }
+.bg-green-500 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(34 197 94 / var(--tw-bg-opacity, 1));
+}
+.bg-neo-amber\/5 {
+  background-color: rgb(255 179 0 / 0.05);
+}
 .p-12 {
   padding: 3rem;
 }
@@ -904,6 +944,9 @@ video {
 }
 .p-8 {
   padding: 2rem;
+}
+.p-10 {
+  padding: 2.5rem;
 }
 .px-4 {
   padding-left: 1rem;
@@ -933,6 +976,14 @@ video {
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
 }
+.px-5 {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+.py-2\.5 {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}
 .pb-8 {
   padding-bottom: 2rem;
 }
@@ -941,6 +992,9 @@ video {
 }
 .pr-6 {
   padding-right: 1.5rem;
+}
+.pr-4 {
+  padding-right: 1rem;
 }
 .text-center {
   text-align: center;
@@ -977,6 +1031,10 @@ video {
   font-size: 0.75rem;
   line-height: 1rem;
 }
+.text-3xl {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
 .font-black {
   font-weight: 900;
 }
@@ -1006,6 +1064,9 @@ video {
 }
 .tracking-widest {
   letter-spacing: 0.1em;
+}
+.tracking-\[0\.5em\] {
+  letter-spacing: 0.5em;
 }
 .text-neo-amber {
   --tw-text-opacity: 1;
@@ -1050,6 +1111,11 @@ video {
   --tw-shadow-colored: 0 0 30px var(--tw-shadow-color);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
+.shadow-\[0_0_50px_rgba\(102\2c 252\2c 241\2c 0\.1\)\] {
+  --tw-shadow: 0 0 50px rgba(102,252,241,0.1);
+  --tw-shadow-colored: 0 0 50px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
 .outline-none {
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -1064,6 +1130,11 @@ video {
 }
 .transition-colors {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+.transition-transform {
+  transition-property: transform;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
@@ -1235,6 +1306,11 @@ body {
   color: rgb(11 12 16 / var(--tw-text-opacity, 1));
 }
 
+.hover\:text-white:hover {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+
 .hover\:shadow-\[0_0_30px_rgba\(102\2c 252\2c 241\2c 0\.1\)\]:hover {
   --tw-shadow: 0 0 30px rgba(102,252,241,0.1);
   --tw-shadow-colored: 0 0 30px var(--tw-shadow-color);
@@ -1245,8 +1321,22 @@ body {
   border-color: rgb(102 252 241 / 0.4);
 }
 
+.focus\:border-neo-cyan\/50:focus {
+  border-color: rgb(102 252 241 / 0.5);
+}
+
 .disabled\:opacity-50:disabled {
   opacity: 0.5;
+}
+
+.disabled\:opacity-30:disabled {
+  opacity: 0.3;
+}
+
+.group:hover .group-hover\:scale-110 {
+  --tw-scale-x: 1.1;
+  --tw-scale-y: 1.1;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
 .group:hover .group-hover\:opacity-100 {
@@ -1263,12 +1353,20 @@ body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .md\:flex-row {
     flex-direction: row;
   }
 
   .md\:items-end {
     align-items: flex-end;
+  }
+
+  .md\:items-center {
+    align-items: center;
   }
 }
 

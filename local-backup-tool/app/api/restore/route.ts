@@ -12,26 +12,61 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing configuration' }, { status: 400 });
     }
 
-    const filePath = path.join(process.cwd(), 'backups', filename);
-    if (!fs.existsSync(filePath)) {
-      return NextResponse.json({ error: 'Backup file not found' }, { status: 404 });
+    // Search for the file in multiple locations
+    const possibleDirs = [
+      path.join(process.cwd(), 'backups'),
+      path.join(process.cwd(), 'data', 'backups'),
+      path.join(process.cwd(), '..', 'backups'),
+      path.join(process.cwd(), '..', 'data', 'backups'),
+    ];
+
+    let filePath = null;
+    for (const dir of possibleDirs) {
+      const p = path.join(dir, filename);
+      if (fs.existsSync(p)) {
+        filePath = p;
+        break;
+      }
+    }
+
+    if (!filePath) {
+      return NextResponse.json({ error: 'Backup file not found on local drive' }, { status: 404 });
     }
 
     console.log(`Restoring ${filename} to ${url}...`);
 
-    const form = new FormData();
-    form.append('backup', fs.createReadStream(filePath));
+    if (filename.endsWith('.zip')) {
+      // Full System Restore
+      const form = new FormData();
+      form.append('backup', fs.createReadStream(filePath));
 
-    const response = await axios.post(`${url}/api/admin/system/restore`, form, {
-      headers: {
-        'x-backup-key': key,
-        ...form.getHeaders()
-      },
-      maxBodyLength: Infinity,
-      maxContentLength: Infinity
-    });
+      const response = await axios.post(`${url}/api/admin/system/restore`, form, {
+        headers: {
+          'x-backup-key': key,
+          ...form.getHeaders()
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
+      });
 
-    return NextResponse.json({ success: true, data: response.data });
+      return NextResponse.json({ success: true, data: response.data });
+    } else if (filename.endsWith('.json')) {
+      // Legacy JSON Restore
+      const jsonData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      
+      // We need an endpoint on the main server that accepts JSON via x-backup-key
+      // For now, let's assume we use the existing /api/backup/restore but that needs requireAdmin
+      // Alternatively, we add a new endpoint or update /api/admin/system/restore to handle JSON.
+      
+      const response = await axios.post(`${url}/api/admin/system/restore-json`, 
+        { backupData: jsonData },
+        { headers: { 'x-backup-key': key } }
+      );
+
+      return NextResponse.json({ success: true, data: response.data });
+    } else {
+      return NextResponse.json({ error: 'Unsupported file format' }, { status: 400 });
+    }
 
   } catch (error: any) {
     console.error('Restore failed:', error.response?.data || error.message);
