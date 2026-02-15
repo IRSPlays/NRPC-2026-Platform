@@ -22,7 +22,13 @@ const isProd = process.env.NODE_ENV === 'production';
 // Email Configuration
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'no-reply@mail.nrpc-platform.app';
-const resend = new Resend(RESEND_API_KEY);
+
+let resend;
+if (RESEND_API_KEY) {
+  resend = new Resend(RESEND_API_KEY);
+} else {
+  console.warn('⚠ RESEND_API_KEY not found. Email features will be disabled.');
+}
 
 // Persistent Data Directory Strategy
 let DATA_DIR;
@@ -430,7 +436,7 @@ app.post('/api/admin/send-credentials', requireAdmin, async (req, res) => {
   const { teamId } = req.body;
   if (!teamId) return res.status(400).json({ error: 'Team ID required' });
 
-  if (!RESEND_API_KEY) {
+  if (!resend) {
     return res.status(500).json({ error: 'Email service not configured (Missing API Key)' });
   }
 
