@@ -20,6 +20,7 @@ import ScoreManager from './components/admin/ScoreManager';
 import TicketManager from './components/admin/TicketManager';
 import Leaderboard from './components/admin/Leaderboard';
 import BackupManager from './components/admin/BackupManager';
+import PasswordChangeModal from './components/auth/PasswordChangeModal';
 import { authAPI } from './lib/api';
 
 function App() {
