@@ -44,7 +44,7 @@ export async function closeDatabase() {
 export async function restoreFromZip(zipPath) {
   console.log(`Starting system restore from: ${zipPath}`);
   
-  const tempExtractDir = path.join(DATA_DIR, 'temp_restore');
+  const tempExtractDir = path.join(DATA_DIR, 'temp_extracted');
   
   // Clean temp dir
   if (fs.existsSync(tempExtractDir)) {
