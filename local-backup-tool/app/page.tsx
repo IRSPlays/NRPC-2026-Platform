@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { RefreshCw, Download, Upload, Server, Shield, HardDrive, AlertTriangle, Database, Activity, Lock, Save, Key, FileArchive, FileJson } from 'lucide-react';
+import { RefreshCw, Download, Upload, Server, Shield, HardDrive, AlertTriangle, Database, Activity, Lock, Save, Key, FileArchive, FileJson, Globe } from 'lucide-react';
 import axios from 'axios';
 
 interface Backup {
@@ -21,6 +21,7 @@ export default function Home() {
   const [syncing, setSyncing] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
   const [msg, setMsg] = useState({ text: '', type: '' });
+  const [source, setSource] = useState<'local' | 'server'>('local');
 
   useEffect(() => {
     const auth = sessionStorage.getItem('nrpc_local_auth');
@@ -32,7 +33,7 @@ export default function Home() {
 
   useEffect(() => {
     if (isAuthenticated) loadBackups();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, source]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,18 +62,42 @@ export default function Home() {
 
   const loadBackups = async () => {
     setLoading(true);
+    setMsg({ text: '', type: '' });
     try {
-      const res = await axios.get('/api/backups');
-      if (Array.isArray(res.data)) {
+      let res;
+      if (source === 'local') {
+        // Try local API (Next.js route)
+        res = await axios.get('/api/test-backups').catch(() => null); 
+        if (!res) {
+          // Fallback to archives path
+          res = await axios.get('/api/archives').catch(err => {
+             if (err.response?.status === 404) {
+               // If local 404s, maybe try server if configured
+               if (config.url && config.key) {
+                 setSource('server');
+                 return null;
+               }
+             }
+             throw err;
+          });
+        }
+      }
+
+      if (source === 'server' && config.url && config.key) {
+        res = await axios.get(`${config.url}/api/admin/system/list`, {
+          headers: { 'x-backup-key': config.key }
+        });
+      }
+
+      if (res && Array.isArray(res.data)) {
         setBackups(res.data);
-      } else {
-        console.error('Unexpected API response:', res.data);
-        setMsg({ text: 'API Error: Invalid response format', type: 'error' });
+      } else if (res) {
         setBackups([]);
       }
     } catch (err: any) {
       console.error(err);
       setMsg({ text: 'Listing Error: ' + (err.response?.data?.error || err.message), type: 'error' });
+      setBackups([]);
     } finally {
       setLoading(false);
     }
@@ -261,10 +286,30 @@ export default function Home() {
             {/* Backups List */}
             <div className="neo-glass rounded-[2rem] border-white/5 overflow-hidden">
               <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                <h2 className="text-sm font-mono font-bold text-white uppercase tracking-[0.2em] flex items-center gap-2">
-                  <Database className="w-4 h-4 text-neo-cyan" />
-                  Local Archives
-                </h2>
+                <div className="flex items-center gap-6">
+                  <h2 className="text-sm font-mono font-bold text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                    <Database className="w-4 h-4 text-neo-cyan" />
+                    Archive Registry
+                  </h2>
+                  <div className="flex bg-neo-void/50 p-1 rounded-lg border border-white/5">
+                    <button 
+                      onClick={() => setSource('local')}
+                      className={`px-3 py-1 rounded text-[10px] font-mono uppercase tracking-widest transition-all ${
+                        source === 'local' ? 'bg-neo-cyan text-neo-void font-bold shadow-[0_0_10px_rgba(102,252,241,0.3)]' : 'text-neo-slate/40 hover:text-white'
+                      }`}
+                    >
+                      LOCAL
+                    </button>
+                    <button 
+                      onClick={() => setSource('server')}
+                      className={`px-3 py-1 rounded text-[10px] font-mono uppercase tracking-widest transition-all ${
+                        source === 'server' ? 'bg-neo-cyan text-neo-void font-bold shadow-[0_0_10px_rgba(102,252,241,0.3)]' : 'text-neo-slate/40 hover:text-white'
+                      }`}
+                    >
+                      REMOTE
+                    </button>
+                  </div>
+                </div>
                 <button 
                   onClick={loadBackups}
                   disabled={loading}
@@ -277,7 +322,7 @@ export default function Home() {
               <div className="divide-y divide-white/5">
                 {backups.length === 0 ? (
                   <div className="p-12 text-center text-neo-slate/30 font-mono text-xs uppercase tracking-widest">
-                    {loading ? 'Scanning drive...' : 'No archives found on local drive'}
+                    {loading ? 'Scanning...' : `No archives found in ${source} storage`}
                   </div>
                 ) : (
                   backups.map((backup) => (
@@ -295,14 +340,19 @@ export default function Home() {
                           </div>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleRestore(backup.name)}
-                        disabled={!!restoring}
-                        className="opacity-0 group-hover:opacity-100 py-2.5 px-5 bg-neo-amber/10 border border-neo-amber/30 text-neo-amber hover:bg-neo-amber hover:text-neo-void rounded-xl text-[10px] font-mono font-bold uppercase tracking-widest transition-all flex items-center gap-2"
-                      >
-                        {restoring === backup.name ? <RefreshCw className="animate-spin w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                        {restoring === backup.name ? 'UPLOADING...' : 'RESTORE'}
-                      </button>
+                      <div className="flex items-center gap-3">
+                        {source === 'server' && (
+                          <div className="px-2 py-1 bg-neo-cyan/10 border border-neo-cyan/20 rounded text-[8px] font-mono text-neo-cyan uppercase">Remote</div>
+                        )}
+                        <button
+                          onClick={() => handleRestore(backup.name)}
+                          disabled={!!restoring}
+                          className="opacity-0 group-hover:opacity-100 py-2.5 px-5 bg-neo-amber/10 border border-neo-amber/30 text-neo-amber hover:bg-neo-amber hover:text-neo-void rounded-xl text-[10px] font-mono font-bold uppercase tracking-widest transition-all flex items-center gap-2"
+                        >
+                          {restoring === backup.name ? <RefreshCw className="animate-spin w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                          {restoring === backup.name ? 'UPLOADING...' : 'RESTORE'}
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}

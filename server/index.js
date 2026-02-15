@@ -345,10 +345,6 @@ app.post('/api/admin/system/restore-json', requireBackupKey, async (req, res) =>
     res.status(500).json({ error: err.message });
   }
 });
-    console.error('Restore Failed:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // ===== AUTH ROUTES =====
 
@@ -1302,9 +1298,13 @@ app.delete('/api/scores/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// ===== BACKUP ROUTES (Admin only) =====
-
-// Create backup (Full System Zip)
+// Debug endpoint
+app.get('/api/debug-backups', async (req, res) => {
+  const backupDir = path.join(DATA_DIR, 'backups');
+  if (!fs.existsSync(backupDir)) return res.json({ error: 'Dir not found', path: backupDir });
+  const files = fs.readdirSync(backupDir);
+  res.json({ path: backupDir, files });
+});
 app.post('/api/backup', requireAdmin, async (req, res) => {
   try {
     const timestamp = Date.now();
@@ -1363,6 +1363,23 @@ app.get('/api/backup/list', requireAdmin, async (req, res) => {
       created: fs.statSync(path.join(backupDir, f)).mtime
     }))
     .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+  
+  res.json(files);
+});
+
+// List backups (Public with key for local tool)
+app.get('/api/admin/system/list', requireBackupKey, async (req, res) => {
+  const backupDir = path.join(DATA_DIR, 'backups');
+  if (!fs.existsSync(backupDir)) return res.json([]);
+  
+  const files = fs.readdirSync(backupDir)
+    .filter(f => f.startsWith('backup-') && (f.endsWith('.zip') || f.endsWith('.json')))
+    .map(f => ({
+      name: f,
+      size: fs.statSync(path.join(backupDir, f)).size,
+      date: fs.statSync(path.join(backupDir, f)).mtime
+    }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   
   res.json(files);
 });
