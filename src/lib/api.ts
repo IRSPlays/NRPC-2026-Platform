@@ -220,9 +220,9 @@ export const backupAPI = {
     return response.blob();
   },
 
-  restore: (backupData: any): Promise<{ success: boolean }> => fetchWithAuth<{ success: boolean }>('/api/backup/restore', {
+  restore: (data: { backupData?: any; filename?: string }): Promise<{ success: boolean }> => fetchWithAuth<{ success: boolean }>('/api/backup/restore', {
     method: 'POST',
-    body: JSON.stringify({ backupData }),
+    body: JSON.stringify(data),
   }),
 };
 

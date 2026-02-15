@@ -3,6 +3,7 @@ import { open } from 'sqlite';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import unzipper from 'unzipper';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +30,89 @@ console.log(`✓ Storage Root: ${DATA_DIR}`); // Debug log
 const DB_PATH = path.join(DATA_DIR, 'database.sqlite');
 
 let db = null;
+
+// Close database connection
+export async function closeDatabase() {
+  if (db) {
+    await db.close();
+    db = null;
+    console.log('✓ Database connection closed');
+  }
+}
+
+// Restore from ZIP backup
+export async function restoreFromZip(zipPath) {
+  console.log(`Starting system restore from: ${zipPath}`);
+  
+  const tempExtractDir = path.join(DATA_DIR, 'temp_restore');
+  
+  // Clean temp dir
+  if (fs.existsSync(tempExtractDir)) {
+    fs.rmSync(tempExtractDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(tempExtractDir, { recursive: true });
+
+  try {
+    // 1. Extract ZIP
+    const directory = await unzipper.Open.file(zipPath);
+    await directory.extract({ path: tempExtractDir });
+    console.log('✓ Backup extracted to temp');
+
+    // 2. Validate contents
+    const newDbPath = path.join(tempExtractDir, 'database.sqlite');
+    if (!fs.existsSync(newDbPath)) {
+      throw new Error('Invalid backup: database.sqlite not found in archive');
+    }
+
+    // 3. Close active DB connection
+    await closeDatabase();
+
+    // 4. Replace Database File
+    // Backup current DB just in case (optional, but good safety)
+    const currentDbBackup = path.join(DATA_DIR, `database.sqlite.pre-restore-${Date.now()}`);
+    if (fs.existsSync(DB_PATH)) {
+      fs.copyFileSync(DB_PATH, currentDbBackup);
+    }
+
+    // Copy new DB
+    fs.copyFileSync(newDbPath, DB_PATH);
+    console.log('✓ Database file replaced');
+
+    // 5. Replace Uploads
+    const uploadsPath = path.join(DATA_DIR, 'uploads');
+    const newUploadsPath = path.join(tempExtractDir, 'uploads');
+
+    if (fs.existsSync(newUploadsPath)) {
+      // Remove current uploads
+      if (fs.existsSync(uploadsPath)) {
+        fs.rmSync(uploadsPath, { recursive: true, force: true });
+      }
+      // Move new uploads
+      fs.renameSync(newUploadsPath, uploadsPath);
+      console.log('✓ Uploads directory replaced');
+    } else {
+      console.log('⚠ No uploads directory in backup, preserving existing uploads or creating empty.');
+      if (!fs.existsSync(uploadsPath)) {
+        fs.mkdirSync(uploadsPath, { recursive: true });
+      }
+    }
+
+    // 6. Re-initialize Database
+    await initDatabase();
+    console.log('✓ System restore completed successfully');
+
+  } catch (err) {
+    console.error('Restore failed:', err);
+    // Try to recover connection if it was closed
+    if (!db) await initDatabase(); 
+    throw err;
+  } finally {
+    // Cleanup temp
+    if (fs.existsSync(tempExtractDir)) {
+      fs.rmSync(tempExtractDir, { recursive: true, force: true });
+    }
+  }
+}
 
 // Initialize database
 async function initDatabase() {
@@ -322,4 +406,4 @@ export async function restoreDatabase(backupData) {
 // Initialize on first import
 initDatabase();
 
-export default { getDb, backupDatabase, restoreDatabase };
+export default { getDb, backupDatabase, restoreDatabase, restoreFromZip, closeDatabase };

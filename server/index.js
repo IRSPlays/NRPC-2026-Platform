@@ -12,7 +12,7 @@ import jwt from 'jsonwebtoken';
 import { Resend } from 'resend';
 import archiver from 'archiver';
 import unzipper from 'unzipper';
-import { getDb, backupDatabase, restoreDatabase } from './database.js';
+import { getDb, backupDatabase, restoreDatabase, restoreFromZip } from './database.js';
 import { calculateTotalScore, calculateRankings, calculateChampionshipRankings } from './scoring.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1409,12 +1409,26 @@ app.get('/api/backup/download/:filename', requireAdmin, (req, res) => {
 
 // Restore from backup
 app.post('/api/backup/restore', requireAdmin, async (req, res) => {
-  const { backupData } = req.body;
+  const { backupData, filename } = req.body;
 
   try {
-    await restoreDatabase(backupData);
-    res.json({ success: true });
+    if (filename) {
+      // Restore from local server file (ZIP)
+      const backupPath = path.join(DATA_DIR, 'backups', filename);
+      if (!fs.existsSync(backupPath)) {
+        return res.status(404).json({ error: 'Backup file not found on server' });
+      }
+      await restoreFromZip(backupPath);
+      res.json({ success: true, method: 'zip-restore' });
+    } else if (backupData) {
+      // Restore from JSON payload (Legacy)
+      await restoreDatabase(backupData);
+      res.json({ success: true, method: 'json-restore' });
+    } else {
+      res.status(400).json({ error: 'No backup data or filename provided' });
+    }
   } catch (err) {
+    console.error('Restore Error:', err);
     res.status(500).json({ error: err.message });
   }
 });

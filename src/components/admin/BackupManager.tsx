@@ -81,12 +81,11 @@ export default function BackupManager() {
     setSuccess('');
 
     try {
-      const blob = await backupAPI.download(filename);
-      const backupData = await blob.text();
-      await backupAPI.restore(JSON.parse(backupData));
+      // Server-side restore (supports ZIP)
+      await backupAPI.restore({ filename });
       setSuccess('State Restoration Successful. System Refresh Required.');
     } catch (err: any) {
-      setError('Restoration Sequence Failure');
+      setError('Restoration Sequence Failure: ' + (err.message || 'Unknown Error'));
     } finally {
       setRestoring(false);
     }
@@ -109,11 +108,11 @@ export default function BackupManager() {
     try {
       const text = await selectedFile.text();
       const backupData = JSON.parse(text);
-      await backupAPI.restore(backupData);
+      await backupAPI.restore({ backupData });
       setSuccess('Local Archive Restored. System Refresh Required.');
       setSelectedFile(null);
     } catch (err: any) {
-      setError('Invalid Archive Format');
+      setError('Invalid Archive Format: ' + (err.message || 'Unknown Error'));
     } finally {
       setRestoring(false);
     }
