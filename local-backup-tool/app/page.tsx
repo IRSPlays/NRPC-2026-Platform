@@ -64,39 +64,37 @@ export default function Home() {
     setLoading(true);
     setMsg({ text: '', type: '' });
     try {
-      let res;
+      let data;
       if (source === 'local') {
-        // Try local API (Next.js route)
-        res = await axios.get('/api/test-backups').catch(() => null); 
-        if (!res) {
-          // Fallback to archives path
-          res = await axios.get('/api/archives').catch(err => {
-             if (err.response?.status === 404) {
-               // If local 404s, maybe try server if configured
-               if (config.url && config.key) {
-                 setSource('server');
-                 return null;
-               }
-             }
-             throw err;
-          });
+        console.log('Fetching local archives...');
+        const res = await fetch('/api/archives', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        data = await res.json();
+      } else {
+        if (!config.url || !config.key) {
+          throw new Error('Configure Server URL and Key for remote access');
         }
-      }
-
-      if (source === 'server' && config.url && config.key) {
-        res = await axios.get(`${config.url}/api/admin/system/list`, {
-          headers: { 'x-backup-key': config.key }
+        console.log(`Fetching remote archives from ${config.url}...`);
+        const res = await fetch(`${config.url}/api/admin/system/list`, {
+          headers: { 'x-backup-key': config.key },
+          cache: 'no-store'
         });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody.error || `HTTP ${res.status}: ${res.statusText}`);
+        }
+        data = await res.json();
       }
 
-      if (res && Array.isArray(res.data)) {
-        setBackups(res.data);
-      } else if (res) {
+      if (Array.isArray(data)) {
+        setBackups(data);
+      } else {
         setBackups([]);
       }
     } catch (err: any) {
-      console.error(err);
-      setMsg({ text: 'Listing Error: ' + (err.response?.data?.error || err.message), type: 'error' });
+      console.error('List error:', err);
+      const errorMsg = err.message || 'Unknown Network Error';
+      setMsg({ text: `Listing Error (${source}): ${errorMsg}`, type: 'error' });
       setBackups([]);
     } finally {
       setLoading(false);

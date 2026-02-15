@@ -87,8 +87,10 @@ app.use(cors({
   origin: function (origin, callback) {
     if (!origin || 
         allowedOrigins.includes(origin) || 
-        origin.endsWith('.railway.app') || 
-        origin.endsWith('.up.railway.app')) {
+        origin.includes('.railway.app') || 
+        origin.includes('.up.railway.app') ||
+        origin.includes('.playit.plus') ||
+        origin.includes('localhost:')) {
       callback(null, true);
     } else {
       console.log('Blocked by CORS:', origin);
