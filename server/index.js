@@ -1407,6 +1407,43 @@ app.get('/api/backup/download/:filename', requireAdmin, (req, res) => {
   res.download(filePath);
 });
 
+// Configure Multer for backup uploads
+const upload = multer({ dest: path.join(DATA_DIR, 'temp_uploads') });
+
+// Restore from uploaded ZIP
+app.post('/api/backup/restore-upload', requireAdmin, upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  const filePath = req.file.path;
+
+  try {
+    // Validate file extension (basic check)
+    if (!req.file.originalname.toLowerCase().endsWith('.zip')) {
+      // Clean up invalid file
+      fs.unlinkSync(filePath);
+      return res.status(400).json({ error: 'Invalid file format. Only .zip files are supported for full restore.' });
+    }
+
+    await restoreFromZip(filePath);
+    
+    // Cleanup uploaded file after successful restore
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Upload Restore Error:', err);
+    // Try to cleanup on error
+    if (fs.existsSync(filePath)) {
+      try { fs.unlinkSync(filePath); } catch (e) {}
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Restore from backup
 app.post('/api/backup/restore', requireAdmin, async (req, res) => {
   const { backupData, filename } = req.body;

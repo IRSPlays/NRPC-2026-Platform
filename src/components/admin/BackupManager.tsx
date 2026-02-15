@@ -106,13 +106,17 @@ export default function BackupManager() {
     setSuccess('');
 
     try {
-      const text = await selectedFile.text();
-      const backupData = JSON.parse(text);
-      await backupAPI.restore({ backupData });
-      setSuccess('Local Archive Restored. System Refresh Required.');
+      if (selectedFile.name.toLowerCase().endsWith('.zip')) {
+        await backupAPI.uploadRestore(selectedFile);
+      } else {
+        const text = await selectedFile.text();
+        const backupData = JSON.parse(text);
+        await backupAPI.restore({ backupData });
+      }
+      setSuccess('Archive Restored Successfully. System Refresh Required.');
       setSelectedFile(null);
     } catch (err: any) {
-      setError('Invalid Archive Format: ' + (err.message || 'Unknown Error'));
+      setError('Invalid Archive Format or Restore Failed: ' + (err.message || 'Unknown Error'));
     } finally {
       setRestoring(false);
     }
@@ -184,12 +188,12 @@ export default function BackupManager() {
             <h2 className="text-xl font-heading font-bold text-white uppercase tracking-tight">External Import</h2>
           </div>
           <p className="text-sm text-neo-slate/50 mb-8 leading-relaxed">
-            Load local .json archive files to overwrite the current system state. Use with caution.
+            Load local .zip (full system) or .json (legacy) archives to overwrite the current system state. Use with caution.
           </p>
           <div className="space-y-4">
             <input
               type="file"
-              accept="application/json,.json"
+              accept=".zip,.json,application/zip,application/json"
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
               className="w-full bg-neo-void/50 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-xs outline-none focus:border-neo-amber/40"
             />

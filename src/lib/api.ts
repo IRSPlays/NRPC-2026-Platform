@@ -224,6 +224,24 @@ export const backupAPI = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+
+  uploadRestore: async (file: File): Promise<{ success: boolean }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_URL}/api/backup/restore-upload`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Upload restore failed' }));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
 };
 
 // Announcements
