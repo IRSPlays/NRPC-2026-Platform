@@ -1407,9 +1407,6 @@ app.get('/api/backup/download/:filename', requireAdmin, (req, res) => {
   res.download(filePath);
 });
 
-// Configure Multer for backup uploads
-const uploadBackup = multer({ dest: path.join(DATA_DIR, 'temp_uploads') });
-
 // Restore from uploaded ZIP
 app.post('/api/backup/restore-upload', requireAdmin, uploadBackup.single('file'), async (req, res) => {
   if (!req.file) {
