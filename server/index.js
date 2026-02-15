@@ -12,7 +12,7 @@ import jwt from 'jsonwebtoken';
 import { Resend } from 'resend';
 import archiver from 'archiver';
 import unzipper from 'unzipper';
-import { getDb, backupDatabase, restoreDatabase, restoreFromZip } from './database.js';
+import { getDb, backupDatabase, restoreDatabase, restoreFromZip, checkpointDatabase } from './database.js';
 import { calculateTotalScore, calculateRankings, calculateChampionshipRankings } from './scoring.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1316,6 +1316,7 @@ app.get('/api/debug-backups', async (req, res) => {
 });
 app.post('/api/backup', requireAdmin, async (req, res) => {
   try {
+    await checkpointDatabase();
     const timestamp = Date.now();
     const backupName = `backup-${timestamp}.zip`;
     const backupPath = path.join(DATA_DIR, 'backups', backupName);

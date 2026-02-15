@@ -40,52 +40,70 @@ export async function closeDatabase() {
   }
 }
 
+// Checkpoint database (flush WAL to main file)
+export async function checkpointDatabase() {
+  const database = await getDb();
+  console.log('[DB] Performing WAL Checkpoint...');
+  try {
+    await database.run('PRAGMA wal_checkpoint(TRUNCATE)');
+    console.log('[DB] Checkpoint successful');
+  } catch (err) {
+    console.error('[DB] Checkpoint failed:', err.message);
+  }
+}
+
 // Restore from ZIP backup
 export async function restoreFromZip(zipPath) {
   console.log(`[RESTORE] Starting system restore from: ${zipPath}`);
   
   if (!fs.existsSync(zipPath)) {
-    console.error(`[RESTORE] ERROR: Source ZIP file not found at ${zipPath}`);
     throw new Error(`Restore source file missing: ${zipPath}`);
   }
 
   const tempExtractDir = path.join(DATA_DIR, 'temp_extracted');
-  console.log(`[RESTORE] Extraction target: ${tempExtractDir}`);
   
-  // Clean and prepare temp dir
-  try {
-    if (fs.existsSync(tempExtractDir)) {
-      fs.rmSync(tempExtractDir, { recursive: true, force: true });
-    }
-    fs.mkdirSync(tempExtractDir, { recursive: true });
-  } catch (err) {
-    console.error(`[RESTORE] ERROR preparing temp dir: ${err.message}`);
-    throw err;
+  // 1. Clean and prepare temp dir
+  if (fs.existsSync(tempExtractDir)) {
+    fs.rmSync(tempExtractDir, { recursive: true, force: true });
   }
+  fs.mkdirSync(tempExtractDir, { recursive: true });
 
   try {
-    // 1. Extract ZIP using a more robust method
+    // 2. Extract ZIP
     console.log('[RESTORE] Extracting archive...');
-    await new Promise((resolve, reject) => {
-      fs.createReadStream(zipPath)
-        .pipe(unzipper.Extract({ path: tempExtractDir }))
-        .on('close', resolve)
-        .on('error', reject);
-    });
+    const directory = await unzipper.Open.file(zipPath);
+    await directory.extract({ path: tempExtractDir });
     console.log('[RESTORE] Extraction complete');
 
-    // 2. Validate contents
+    // 3. Validate extracted contents
     const newDbPath = path.join(tempExtractDir, 'database.sqlite');
     if (!fs.existsSync(newDbPath)) {
-      console.error('[RESTORE] ERROR: database.sqlite not found in extracted archive');
-      throw new Error('Invalid backup: database.sqlite not found in archive');
+      // Check if it's nested (sometimes archivers add a folder)
+      const files = fs.readdirSync(tempExtractDir);
+      console.log('[RESTORE] Extracted files:', files);
+      throw new Error('Invalid backup: database.sqlite not found in root of archive');
     }
 
-    // 3. Close active DB connection
+    const stats = fs.statSync(newDbPath);
+    console.log(`[RESTORE] Found database file (${stats.size} bytes)`);
+
+    // 4. Close active DB connection
     console.log('[RESTORE] Closing active database connection...');
     await closeDatabase();
 
-    // 4. Replace Database File
+    // 5. CRITICAL: Remove existing WAL/SHM files to prevent corruption
+    const walPath = `${DB_PATH}-wal`;
+    const shmPath = `${DB_PATH}-shm`;
+    if (fs.existsSync(walPath)) {
+      console.log('[RESTORE] Removing existing WAL file');
+      fs.unlinkSync(walPath);
+    }
+    if (fs.existsSync(shmPath)) {
+      console.log('[RESTORE] Removing existing SHM file');
+      fs.unlinkSync(shmPath);
+    }
+
+    // 6. Replace Database File
     console.log('[RESTORE] Overwriting database file...');
     // Backup current DB as a failsafe
     const currentDbBackup = path.join(DATA_DIR, `database.sqlite.pre-restore-${Date.now()}`);
@@ -96,7 +114,7 @@ export async function restoreFromZip(zipPath) {
     fs.copyFileSync(newDbPath, DB_PATH);
     console.log('[RESTORE] Database file replaced successfully');
 
-    // 5. Replace Uploads
+    // 7. Replace Uploads
     const uploadsPath = path.join(DATA_DIR, 'uploads');
     const newUploadsPath = path.join(tempExtractDir, 'uploads');
 
@@ -105,38 +123,29 @@ export async function restoreFromZip(zipPath) {
       if (fs.existsSync(uploadsPath)) {
         fs.rmSync(uploadsPath, { recursive: true, force: true });
       }
-      // Use move/rename for efficiency if possible, or copy
       try {
-        fs.renameSync(newUploadsPath, uploadsPath);
-      } catch (e) {
-        // Fallback to copy if rename fails (e.g. across mount points)
         fs.cpSync(newUploadsPath, uploadsPath, { recursive: true });
+        console.log('[RESTORE] Uploads directory restored');
+      } catch (e) {
+        console.error('[RESTORE] Error copying uploads:', e.message);
       }
-      console.log('[RESTORE] Uploads directory replaced successfully');
     } else {
-      console.log('[RESTORE] WARNING: No uploads directory in backup');
-      if (!fs.existsSync(uploadsPath)) {
-        fs.mkdirSync(uploadsPath, { recursive: true });
-      }
+      console.log('[RESTORE] WARNING: No uploads directory found in backup');
     }
 
-    // 6. Re-initialize Database
-    console.log('[RESTORE] Re-initializing database connection...');
+    // 8. Re-initialize Database
+    console.log('[RESTORE] Re-initializing database...');
     await initDatabase();
     console.log('[RESTORE] SUCCESS: System restore completed');
 
   } catch (err) {
-    console.error(`[RESTORE] RESTORE FAILED: ${err.message}`);
-    // Try to recover connection
+    console.error(`[RESTORE] FATAL ERROR: ${err.message}`);
     if (!db) await initDatabase(); 
     throw err;
   } finally {
-    // Cleanup temp (keep it for debugging if needed, but usually best to clean)
-    try {
-      if (fs.existsSync(tempExtractDir)) {
-        fs.rmSync(tempExtractDir, { recursive: true, force: true });
-      }
-    } catch (e) {}
+    if (fs.existsSync(tempExtractDir)) {
+      fs.rmSync(tempExtractDir, { recursive: true, force: true });
+    }
   }
 }
 
