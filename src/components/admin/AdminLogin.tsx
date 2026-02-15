@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Lock, Shield, ChevronRight, Fingerprint, Database } from 'lucide-react';
+import { Lock, Shield, ChevronRight, Fingerprint, Database, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function AdminLogin() {
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<'admin' | 'judge'>('admin');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -83,7 +84,7 @@ export default function AdminLogin() {
                 <div className="relative group">
                   <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${role === 'admin' ? 'text-neo-amber/40 group-focus-within:text-neo-amber' : 'text-neo-cyan/40 group-focus-within:text-neo-cyan'}`} />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className={`w-full bg-neo-void/80 border rounded-xl py-4 pl-12 pr-12 text-white font-mono placeholder:text-neo-slate/10 outline-none transition-all ${
@@ -93,6 +94,13 @@ export default function AdminLogin() {
                     }`}
                     placeholder="••••••••••••"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className={`absolute right-12 top-1/2 -translate-y-1/2 p-2 text-neo-slate/40 hover:text-white transition-colors`}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                   <button 
                     type="submit"
                     className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors ${

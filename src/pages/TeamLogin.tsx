@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, Key, ScanLine, ShieldCheck, Activity } from 'lucide-react';
+import { Lock, User, Key, ScanLine, ShieldCheck, Activity, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { teamsAPI } from '../lib/api';
 import { Team } from '../types';
@@ -9,6 +9,7 @@ export default function TeamLogin() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [teamId, setTeamId] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetchingTeams, setFetchingTeams] = useState(true);
@@ -128,13 +129,20 @@ export default function TeamLogin() {
               <div className="relative group">
                 <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neo-slate/40 group-focus-within:text-neo-cyan transition-colors" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Access Key"
-                  className="w-full bg-neo-void/50 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white font-mono placeholder:text-neo-slate/20 focus:border-neo-cyan/50 focus:ring-1 focus:ring-neo-cyan/20 outline-none transition-all"
+                  className="w-full bg-neo-void/50 border border-white/10 rounded-xl py-4 pl-12 pr-12 text-white font-mono placeholder:text-neo-slate/20 focus:border-neo-cyan/50 focus:ring-1 focus:ring-neo-cyan/20 outline-none transition-all"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-neo-slate/40 hover:text-neo-cyan transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
