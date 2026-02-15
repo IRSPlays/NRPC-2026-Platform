@@ -49,6 +49,11 @@ export const authAPI = {
   logout: () => fetchWithAuth<{ success: boolean }>('/api/auth/logout', { method: 'POST' }),
   
   checkStatus: () => fetchWithAuth<{ isAdmin: boolean; isJudge: boolean; teamId: number | null; teamName: string | null }>('/api/auth/status'),
+
+  updatePassword: (newPassword: string) => fetchWithAuth<{ success: boolean }>('/api/auth/update-password', {
+    method: 'POST',
+    body: JSON.stringify({ newPassword }),
+  }),
 };
 
 // Teams
@@ -67,6 +72,11 @@ export const teamsAPI = {
   
   delete: (id: number): Promise<{ success: boolean }> => fetchWithAuth<{ success: boolean }>(`/api/teams/${id}`, {
     method: 'DELETE',
+  }),
+
+  sendCredentials: (teamId: number): Promise<{ success: boolean }> => fetchWithAuth<{ success: boolean }>('/api/admin/send-credentials', {
+    method: 'POST',
+    body: JSON.stringify({ teamId }),
   }),
 };
 

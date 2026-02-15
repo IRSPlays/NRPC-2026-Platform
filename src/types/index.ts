@@ -3,6 +3,8 @@ export interface Team {
   team_name: string;
   school_name: string;
   category: 'Primary' | 'Secondary';
+  email?: string;
+  login_password?: string;
 }
 
 export interface MissionData {

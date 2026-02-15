@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
+import { Resend } from 'resend';
 import { getDb, backupDatabase, restoreDatabase } from './database.js';
 import { calculateTotalScore, calculateRankings, calculateChampionshipRankings } from './scoring.js';
 
@@ -17,6 +18,11 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 const isProd = process.env.NODE_ENV === 'production';
+
+// Email Configuration
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const EMAIL_FROM = process.env.EMAIL_FROM || 'no-reply@mail.nrpc-platform.app';
+const resend = new Resend(RESEND_API_KEY);
 
 // Persistent Data Directory Strategy
 let DATA_DIR;
@@ -351,22 +357,106 @@ app.get('/api/auth/status', (req, res) => {
   });
 });
 
+// Update password (team)
+app.post('/api/auth/update-password', async (req, res) => {
+  const { newPassword } = req.body;
+  const teamToken = verifyToken(req.cookies.team_auth);
+
+  if (!teamToken || teamToken.type !== 'team') {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+
+  try {
+    const db = await getDb();
+    await db.run('UPDATE teams SET login_password = ? WHERE id = ?', [newPassword, teamToken.teamId]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ===== TEAM ROUTES =====
 
 // Get all teams (public for calculator)
 app.get('/api/teams', publicLimiter, async (req, res) => {
   try {
     const db = await getDb();
-    const teams = await db.all('SELECT id, team_name, school_name, category FROM teams ORDER BY team_name');
+    // Only return email if admin
+    const adminToken = verifyToken(req.cookies.admin_auth);
+    const isAdmin = !!adminToken && adminToken.type === 'admin';
+    
+    const query = isAdmin 
+      ? 'SELECT id, team_name, school_name, category, email, login_password FROM teams ORDER BY team_name'
+      : 'SELECT id, team_name, school_name, category FROM teams ORDER BY team_name';
+      
+    const teams = await db.all(query);
     res.json(teams);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Send credentials email (admin only)
+app.post('/api/admin/send-credentials', requireAdmin, async (req, res) => {
+  const { teamId } = req.body;
+  if (!teamId) return res.status(400).json({ error: 'Team ID required' });
+
+  if (!RESEND_API_KEY) {
+    return res.status(500).json({ error: 'Email service not configured (Missing API Key)' });
+  }
+
+  try {
+    const db = await getDb();
+    const team = await db.get('SELECT * FROM teams WHERE id = ?', [teamId]);
+    if (!team) return res.status(404).json({ error: 'Team not found' });
+    if (!team.email) return res.status(400).json({ error: 'Team has no email address' });
+
+    const html = `
+      <div style="font-family: sans-serif; color: #333;">
+        <h1>NRPC 2026 Registration Confirmed</h1>
+        <p>Hello <strong>${team.team_name}</strong> from <strong>${team.school_name}</strong>,</p>
+        <p>Your team has been registered for the 18th National Robotics Programming Competition.</p>
+        
+        <div style="background: #f4f4f4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3>Your Login Credentials</h3>
+          <p><strong>Team Name (Selection):</strong> ${team.team_name}</p>
+          <p><strong>Password:</strong> ${team.login_password}</p>
+        </div>
+
+        <p>Please login at <a href="https://www.nrpc-platform.app/team-login">https://www.nrpc-platform.app/team-login</a></p>
+        <p><em>Note: You will be prompted to change this password upon first login.</em></p>
+        
+        <hr/>
+        <p style="font-size: 12px; color: #888;">This is an automated message from the NRPC 2026 Organizing Committee.</p>
+      </div>
+    `;
+
+    const data = await resend.emails.send({
+      from: `NRPC 2026 <${EMAIL_FROM}>`,
+      to: team.email,
+      subject: 'NRPC 2026: Team Login Credentials',
+      html: html,
+    });
+
+    if (data.error) {
+      console.error('Resend Error:', data.error);
+      return res.status(500).json({ error: 'Failed to send email via Resend' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Create team (admin only)
 app.post('/api/teams', requireAdmin, async (req, res) => {
-  const { team_name, school_name, category } = req.body;
+  const { team_name, school_name, category, email } = req.body;
   
   if (!team_name || !school_name || !category) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -383,8 +473,8 @@ app.post('/api/teams', requireAdmin, async (req, res) => {
   try {
     const db = await getDb();
     const result = await db.run(
-      'INSERT INTO teams (team_name, school_name, category) VALUES (?, ?, ?)',
-      [team_name, school_name, category]
+      'INSERT INTO teams (team_name, school_name, category, email) VALUES (?, ?, ?, ?)',
+      [team_name, school_name, category, email || null]
     );
     
     res.json({ 
@@ -393,7 +483,8 @@ app.post('/api/teams', requireAdmin, async (req, res) => {
         id: result.lastID, 
         team_name, 
         school_name, 
-        category 
+        category,
+        email
       } 
     });
   } catch (err) {
@@ -407,7 +498,7 @@ app.post('/api/teams', requireAdmin, async (req, res) => {
 
 // Update team
 app.put('/api/teams/:id', requireAdmin, async (req, res) => {
-  const { team_name, school_name, category } = req.body;
+  const { team_name, school_name, category, email } = req.body;
   const { id } = req.params;
 
   if (!team_name || !school_name || !category) {
@@ -425,8 +516,8 @@ app.put('/api/teams/:id', requireAdmin, async (req, res) => {
   try {
     const db = await getDb();
     const result = await db.run(
-      'UPDATE teams SET team_name = ?, school_name = ?, category = ? WHERE id = ?',
-      [team_name, school_name, category, id]
+      'UPDATE teams SET team_name = ?, school_name = ?, category = ?, email = ? WHERE id = ?',
+      [team_name, school_name, category, email || null, id]
     );
 
     if (result.changes === 0) {

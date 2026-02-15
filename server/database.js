@@ -48,11 +48,24 @@ async function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       team_name TEXT UNIQUE NOT NULL,
       school_name TEXT NOT NULL,
+      email TEXT,
       category TEXT CHECK(category IN ('Primary', 'Secondary')) NOT NULL,
       login_password TEXT DEFAULT 'NRPC2026Teams',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Migration: Add email to teams if missing
+  try {
+    const tableInfo = await db.all("PRAGMA table_info(teams)");
+    const hasEmail = tableInfo.some(col => col.name === 'email');
+    if (!hasEmail) {
+      console.log('Migrating: Adding email to teams table...');
+      await db.run("ALTER TABLE teams ADD COLUMN email TEXT");
+    }
+  } catch (err) {
+    console.error('Migration error:', err);
+  }
 
   await db.run(`
     CREATE TABLE IF NOT EXISTS submissions (
@@ -239,8 +252,8 @@ export async function restoreDatabase(backupData) {
 
     for (const team of backupData.teams) {
       await database.run(
-        'INSERT INTO teams (id, team_name, school_name, category, login_password, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [team.id, team.team_name, team.school_name, team.category, team.login_password, team.created_at]
+        'INSERT INTO teams (id, team_name, school_name, email, category, login_password, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [team.id, team.team_name, team.school_name, team.email || null, team.category, team.login_password, team.created_at]
       );
     }
 

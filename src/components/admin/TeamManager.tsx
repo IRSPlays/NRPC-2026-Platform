@@ -14,7 +14,8 @@ export default function TeamManager() {
   const [formData, setFormData] = useState({
     team_name: '',
     school_name: '',
-    category: 'Secondary' as 'Primary' | 'Secondary'
+    category: 'Secondary' as 'Primary' | 'Secondary',
+    email: ''
   });
 
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -47,7 +48,7 @@ export default function TeamManager() {
         await teamsAPI.create(formData);
         setSuccess('New team unit deployed!');
       }
-      setFormData({ team_name: '', school_name: '', category: 'Secondary' });
+      setFormData({ team_name: '', school_name: '', category: 'Secondary', email: '' });
       setShowAdd(false);
       setEditingId(null);
       loadTeams();
@@ -60,10 +61,26 @@ export default function TeamManager() {
     setFormData({
       team_name: team.team_name,
       school_name: team.school_name,
-      category: team.category
+      category: team.category,
+      email: team.email || ''
     });
     setEditingId(team.id);
     setShowAdd(true);
+  };
+
+  const handleSendCredentials = async (team: Team) => {
+    if (!team.email) {
+      alert('This team has no email address.');
+      return;
+    }
+    if (!confirm(`Send login credentials to ${team.email}?`)) return;
+    
+    try {
+      await teamsAPI.sendCredentials(team.id);
+      setSuccess(`Credentials sent to ${team.team_name}`);
+    } catch (err) {
+      alert('Failed to send email');
+    }
   };
 
   const handleDelete = async (id: number) => {
