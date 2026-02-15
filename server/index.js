@@ -126,6 +126,25 @@ app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 app.use('/api/', generalLimiter);
 
+// SEO: Force WWW Redirects
+app.use((req, res, next) => {
+  const host = req.get('host');
+  const preferredDomain = 'www.nrpc-platform.app';
+  
+  // Skip for local dev or API calls
+  if (host.includes('localhost') || host.includes('127.0.0.1') || req.path.startsWith('/api/')) {
+    return next();
+  }
+
+  // If visiting via non-www or railway domain, 301 redirect to www
+  if (host !== preferredDomain) {
+    console.log(`SEO Redirect: ${host} -> ${preferredDomain}`);
+    return res.redirect(301, `https://${preferredDomain}${req.originalUrl}`);
+  }
+
+  next();
+});
+
 // Serve uploaded files with proper MIME types
 app.use('/uploads', (req, res, next) => {
   const ext = path.extname(req.path).toLowerCase();

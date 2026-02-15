@@ -31,17 +31,8 @@
     <link rel="icon" type="image/png" href="/favicon.png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/favicon.png" />
     
-    <!-- Dynamic URL fallback -->
-    <script>
-      // Force canonical to www
-      const canonicalUrl = 'https://www.nrpc-platform.app/';
-      if (!document.querySelector('link[rel="canonical"]')) {
-        const link = document.createElement('link');
-        link.rel = 'canonical';
-        link.href = canonicalUrl;
-        document.head.appendChild(link);
-      }
-    </script>
+    <!-- SEO Canonical -->
+    <link rel="canonical" href="https://www.nrpc-platform.app/" />
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
