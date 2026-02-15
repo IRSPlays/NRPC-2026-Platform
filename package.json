@@ -13,6 +13,7 @@
     "prod": "npm run build && npm run start"
   },
   "dependencies": {
+    "archiver": "^7.0.1",
     "clsx": "^2.1.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -30,7 +31,8 @@
     "resend": "^6.9.2",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
-    "tailwind-merge": "^2.2.1"
+    "tailwind-merge": "^2.2.1",
+    "unzipper": "^0.12.3"
   },
   "devDependencies": {
     "@types/node": "^25.2.3",

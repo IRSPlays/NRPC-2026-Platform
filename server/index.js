@@ -10,6 +10,8 @@ import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import { Resend } from 'resend';
+import archiver from 'archiver';
+import unzipper from 'unzipper';
 import { getDb, backupDatabase, restoreDatabase } from './database.js';
 import { calculateTotalScore, calculateRankings, calculateChampionshipRankings } from './scoring.js';
 
@@ -23,6 +25,7 @@ const isProd = process.env.NODE_ENV === 'production';
 // Email Configuration
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'no-reply@mail.nrpc-platform.app';
+const BACKUP_SECRET_KEY = process.env.BACKUP_SECRET_KEY; // Critical for remote backup
 
 let resend;
 if (RESEND_API_KEY) {
@@ -275,6 +278,98 @@ const uploadTicket = multer({
     } else {
       cb(new Error('Only images (JPG, PNG, WEBP) are allowed for tickets'));
     }
+  }
+});
+
+// Middleware for Remote Backup Access
+const requireBackupKey = (req, res, next) => {
+  const key = req.headers['x-backup-key'];
+  if (!BACKUP_SECRET_KEY || key !== BACKUP_SECRET_KEY) {
+    return res.status(403).json({ error: 'Invalid or missing Backup Key' });
+  }
+  next();
+};
+
+// EXPORT SYSTEM (DB + Uploads)
+app.get('/api/admin/system/export', requireBackupKey, async (req, res) => {
+  try {
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    
+    res.attachment(`nrpc-system-backup-${Date.now()}.zip`);
+    
+    archive.pipe(res);
+
+    // Append Database
+    const dbPath = path.join(DATA_DIR, 'database.sqlite');
+    if (fs.existsSync(dbPath)) {
+      archive.file(dbPath, { name: 'database.sqlite' });
+    }
+
+    // Append Uploads
+    const uploadsDir = path.join(DATA_DIR, 'uploads');
+    if (fs.existsSync(uploadsDir)) {
+      archive.directory(uploadsDir, 'uploads');
+    }
+
+    await archive.finalize();
+  } catch (err) {
+    console.error('Backup Export Failed:', err);
+    res.status(500).end();
+  }
+});
+
+// RESTORE SYSTEM (Dangerous)
+const uploadBackup = multer({ dest: path.join(DATA_DIR, 'temp_restore') });
+app.post('/api/admin/system/restore', requireBackupKey, uploadBackup.single('backup'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No backup file provided' });
+
+  try {
+    const zipPath = req.file.path;
+    
+    // Extract to temp location first
+    const extractPath = path.join(DATA_DIR, 'temp_extracted');
+    if (fs.existsSync(extractPath)) fs.rmSync(extractPath, { recursive: true, force: true });
+    fs.mkdirSync(extractPath);
+
+    await fs.createReadStream(zipPath)
+      .pipe(unzipper.Extract({ path: extractPath }))
+      .promise();
+
+    // Verify integrity (check if database.sqlite exists)
+    if (!fs.existsSync(path.join(extractPath, 'database.sqlite'))) {
+      throw new Error('Invalid backup: database.sqlite missing');
+    }
+
+    // --- CRITICAL ZONE: OVERWRITE ---
+    
+    // 1. Close DB Connection? (Ideally, but sqlite handles file replacement okay usually if WAL)
+    // For safety, we just overwrite.
+    
+    // Move Database
+    fs.copyFileSync(path.join(extractPath, 'database.sqlite'), path.join(DATA_DIR, 'database.sqlite'));
+    
+    // Move Uploads
+    const uploadsSource = path.join(extractPath, 'uploads');
+    const uploadsDest = path.join(DATA_DIR, 'uploads');
+    
+    if (fs.existsSync(uploadsSource)) {
+      // Remove old uploads to ensure clean state? Or merge? 
+      // Clean replace is safer for "Restore" concept.
+      if (fs.existsSync(uploadsDest)) fs.rmSync(uploadsDest, { recursive: true, force: true });
+      fs.cpSync(uploadsSource, uploadsDest, { recursive: true });
+    }
+
+    // Cleanup
+    fs.unlinkSync(zipPath);
+    fs.rmSync(extractPath, { recursive: true, force: true });
+
+    res.json({ success: true, message: 'System restored successfully. Restart recommended.' });
+    
+    // Optional: Trigger restart if running in a manager like pm2 or Railway
+    // process.exit(0); 
+  } catch (err) {
+    console.error('Restore Failed:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
