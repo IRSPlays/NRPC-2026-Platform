@@ -48,7 +48,7 @@ export const authAPI = {
   
   logout: () => fetchWithAuth<{ success: boolean }>('/api/auth/logout', { method: 'POST' }),
   
-  checkStatus: () => fetchWithAuth<{ isAdmin: boolean; isJudge: boolean; teamId: number | null; teamName: string | null }>('/api/auth/status'),
+  checkStatus: () => fetchWithAuth<{ isAdmin: boolean; isJudge: boolean; teamId: number | null; teamName: string | null; requiresPasswordChange?: boolean }>('/api/auth/status'),
 
   updatePassword: (newPassword: string) => fetchWithAuth<{ success: boolean }>('/api/auth/update-password', {
     method: 'POST',

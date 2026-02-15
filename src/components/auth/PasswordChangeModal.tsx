@@ -13,23 +13,25 @@ export default function PasswordChangeModal() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if user is logged in team and using default password
-    // In a real app, we'd check a "password_changed" flag in the JWT or DB
-    // For now, we can check if the current session was initiated with the default password
-    // However, the client doesn't know the password used to login.
+    // Check loop to catch status changes
+    const checkStatus = () => {
+      const requiresChange = localStorage.getItem('nrpc_requires_password_change');
+      if (isTeam && requiresChange === 'true') {
+        setIsOpen(true);
+      }
+    };
+
+    checkStatus();
+    // Listen for storage events (cross-tab or same-tab dispatch)
+    window.addEventListener('storage', checkStatus);
     
-    // Better approach: The backend login response could include "requiresPasswordChange: true"
-    // Since we didn't add that field yet, let's implement a simple client-side check if we can
-    // Or we can add an API endpoint /api/auth/check-password-status
-    
-    // Actually, let's modify the login response in server/index.js to return this flag first.
-    // But for now, I'll create the UI and we can wire it up.
-    
-    // Placeholder logic: Trigger if localStorage flag says so (set during login)
-    const requiresChange = localStorage.getItem('nrpc_requires_password_change');
-    if (isTeam && requiresChange === 'true') {
-      setIsOpen(true);
-    }
+    // Also poll occasionally just in case
+    const interval = setInterval(checkStatus, 1000);
+
+    return () => {
+      window.removeEventListener('storage', checkStatus);
+      clearInterval(interval);
+    };
   }, [isTeam]);
 
   const handleSubmit = async (e: React.FormEvent) => {

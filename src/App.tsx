@@ -27,7 +27,18 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    authAPI.checkStatus().catch(() => {}).finally(() => setLoading(false));
+    authAPI.checkStatus()
+      .then(status => {
+        if (status.requiresPasswordChange) {
+          localStorage.setItem('nrpc_requires_password_change', 'true');
+          // Force a re-render/event to ensure modal catches it immediately if already mounted
+          window.dispatchEvent(new Event('storage'));
+        } else {
+          localStorage.removeItem('nrpc_requires_password_change');
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) {

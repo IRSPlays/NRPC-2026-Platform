@@ -377,16 +377,32 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // Check auth status
-app.get('/api/auth/status', (req, res) => {
+app.get('/api/auth/status', async (req, res) => {
   const adminToken = verifyToken(req.cookies.admin_auth);
   const judgeToken = verifyToken(req.cookies.judge_auth);
   const teamToken = verifyToken(req.cookies.team_auth);
+  
+  let requiresPasswordChange = false;
+
+  if (teamToken && teamToken.type === 'team') {
+    try {
+      const db = await getDb();
+      const team = await db.get('SELECT login_password, password_changed FROM teams WHERE id = ?', [teamToken.teamId]);
+      if (team) {
+        // Check if password change is required
+        requiresPasswordChange = (team.password_changed !== 1) || team.login_password === TEAM_PASSWORD || team.login_password === 'NRPC2026Teams';
+      }
+    } catch (err) {
+      console.error('Auth status check error:', err);
+    }
+  }
   
   res.json({
     isAdmin: !!adminToken && adminToken.type === 'admin',
     isJudge: !!judgeToken && judgeToken.type === 'judge',
     teamId: teamToken?.teamId || null,
-    teamName: teamToken?.teamName || null
+    teamName: teamToken?.teamName || null,
+    requiresPasswordChange
   });
 });
 
