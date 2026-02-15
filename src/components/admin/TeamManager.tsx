@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Plus, Trash2, Edit2, AlertCircle, CheckCircle2, Search, X } from 'lucide-react';
+import { Users, Plus, Trash2, Edit2, AlertCircle, CheckCircle2, Search, X, Mail, Send } from 'lucide-react';
 import { teamsAPI } from '../../lib/api';
 import type { Team } from '../../types';
 
@@ -10,6 +10,7 @@ export default function TeamManager() {
   const [success, setSuccess] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sendingBatch, setSendingBatch] = useState(false);
   
   const [formData, setFormData] = useState({
     team_name: '',
@@ -78,8 +79,25 @@ export default function TeamManager() {
     try {
       await teamsAPI.sendCredentials(team.id);
       setSuccess(`Credentials sent to ${team.team_name}`);
+      loadTeams();
     } catch (err) {
       alert('Failed to send email');
+    }
+  };
+
+  const handleBatchSend = async () => {
+    if (!confirm('Start batch email process for up to 50 unsent teams? This may take a moment.')) return;
+    setSendingBatch(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await teamsAPI.batchSendCredentials(50);
+      setSuccess(`Batch complete: Sent ${res.count} emails.`);
+      loadTeams();
+    } catch (err: any) {
+      setError(err.message || 'Batch send failed');
+    } finally {
+      setSendingBatch(false);
     }
   };
 
@@ -100,20 +118,30 @@ export default function TeamManager() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between border-b border-white/5 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-white/5 pb-6">
         <div>
           <h1 className="text-3xl font-heading font-black text-white uppercase tracking-tighter">
             Team <span className="text-neo-cyan">Database</span>
           </h1>
           <p className="text-xs font-mono text-neo-slate/40 uppercase tracking-[0.2em] mt-1">Operating Units Registry</p>
         </div>
-        <button
-          onClick={() => { setShowAdd(!showAdd); setEditingId(null); setFormData({ team_name: '', school_name: '', category: 'Secondary' }); }}
-          className="btn-neo flex items-center gap-2"
-        >
-          {showAdd ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showAdd ? 'Cancel' : 'Register Team'}
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={handleBatchSend}
+            disabled={sendingBatch}
+            className="btn-neo-amber flex items-center gap-2 py-2 px-4 text-xs"
+          >
+            {sendingBatch ? <Users className="animate-spin w-4 h-4" /> : <Send className="w-4 h-4" />}
+            Batch Email (50)
+          </button>
+          <button
+            onClick={() => { setShowAdd(!showAdd); setEditingId(null); setFormData({ team_name: '', school_name: '', category: 'Secondary', email: '' }); }}
+            className="btn-neo flex items-center gap-2 py-2 px-4 text-xs"
+          >
+            {showAdd ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {showAdd ? 'Cancel' : 'Register Team'}
+          </button>
+        </div>
       </div>
 
       {success && <div className="p-4 rounded-xl bg-neo-cyan/10 border border-neo-cyan/30 text-neo-cyan text-xs font-mono uppercase tracking-widest flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> {success}</div>}
@@ -156,6 +184,16 @@ export default function TeamManager() {
                   <option value="Secondary">Secondary</option>
                 </select>
               </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest ml-4">Contact Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-neo-void/50 border border-white/10 rounded-2xl py-4 px-6 text-white outline-none focus:border-neo-cyan/40"
+                  placeholder="team@school.edu.sg"
+                />
+              </div>
             </div>
             <button type="submit" className="w-full btn-neo py-4">{editingId ? 'Update Registration' : 'Confirm Registration'}</button>
           </form>
@@ -196,6 +234,12 @@ export default function TeamManager() {
                     <td className="px-8 py-6">
                       <div className="text-sm font-bold text-white group-hover:text-neo-cyan transition-colors">{team.team_name}</div>
                       <div className="text-xs text-neo-slate/40">{team.school_name}</div>
+                      {team.email && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-mono text-neo-slate/30">{team.email}</span>
+                          {team.email_sent ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <div className="w-2 h-2 rounded-full bg-neo-amber/50 animate-pulse" title="Not sent" />}
+                        </div>
+                      )}
                     </td>
                     <td className="px-8 py-6">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest ${
@@ -205,6 +249,9 @@ export default function TeamManager() {
                       </span>
                     </td>
                     <td className="px-8 py-6 text-right space-x-2">
+                      <button onClick={() => handleSendCredentials(team)} className="p-2 bg-white/5 rounded-lg hover:bg-neo-cyan/10 hover:text-neo-cyan transition-all" title="Send Login Email">
+                        <Mail className="w-4 h-4" />
+                      </button>
                       <button onClick={() => handleEdit(team)} aria-label={`Edit ${team.team_name}`} className="p-2 bg-white/5 rounded-lg hover:bg-neo-cyan/10 hover:text-neo-cyan transition-all">
                         <Edit2 className="w-4 h-4" />
                       </button>
