@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { RefreshCw, Download, Upload, Server, Shield, HardDrive, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Download, Upload, Server, Shield, HardDrive, AlertTriangle, Database, Activity, Lock, Save } from 'lucide-react';
 import axios from 'axios';
 
 interface Backup {
@@ -16,7 +16,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState({ text: '', type: '' });
 
   useEffect(() => {
     const saved = localStorage.getItem('nrpc_backup_config');
@@ -26,8 +26,8 @@ export default function Home() {
 
   const saveConfig = () => {
     localStorage.setItem('nrpc_backup_config', JSON.stringify(config));
-    setMsg('Configuration saved locally');
-    setTimeout(() => setMsg(''), 3000);
+    setMsg({ text: 'Configuration saved locally', type: 'success' });
+    setTimeout(() => setMsg({ text: '', type: '' }), 3000);
   };
 
   const loadBackups = async () => {
@@ -42,32 +42,28 @@ export default function Home() {
   const handleSync = async () => {
     if (!config.url || !config.key) return alert('Configure server first');
     setSyncing(true);
-    setMsg('');
+    setMsg({ text: '', type: '' });
     try {
       await axios.post('/api/sync', config);
-      setMsg('Sync Complete: Data secured locally');
+      setMsg({ text: 'Sync Complete: Data secured locally', type: 'success' });
       loadBackups();
     } catch (err: any) {
-      setMsg('Sync Error: ' + (err.response?.data?.error || err.message));
+      setMsg({ text: 'Sync Error: ' + (err.response?.data?.error || err.message), type: 'error' });
     } finally {
       setSyncing(false);
     }
   };
 
   const handleRestore = async (filename: string) => {
-    if (!confirm(`EMERGENCY PROTOCOL: 
-
-Are you sure you want to OVERWRITE the live server with ${filename}?
-
-This cannot be undone.`)) return;
+    if (!confirm(`EMERGENCY PROTOCOL: \n\nAre you sure you want to OVERWRITE the live server with ${filename}?\n\nThis cannot be undone.`)) return;
     
     setRestoring(filename);
-    setMsg('');
+    setMsg({ text: '', type: '' });
     try {
       await axios.post('/api/restore', { ...config, filename });
-      setMsg('System Restored Successfully. Live server is rebooting...');
+      setMsg({ text: 'System Restored Successfully. Live server is rebooting...', type: 'success' });
     } catch (err: any) {
-      setMsg('Restore Error: ' + (err.response?.data?.error || err.message));
+      setMsg({ text: 'Restore Error: ' + (err.response?.data?.error || err.message), type: 'error' });
     } finally {
       setRestoring(null);
     }
@@ -82,114 +78,169 @@ This cannot be undone.`)) return;
   };
 
   return (
-    <main className="min-h-screen bg-cmd-dark text-white p-8 font-mono relative overflow-hidden">
-      <div className="scanline"></div>
+    <main className="min-h-screen bg-neo-void text-neo-slate p-8 relative overflow-hidden">
+      <div className="scanning-line absolute inset-0 opacity-20 pointer-events-none"></div>
       
-      <div className="max-w-5xl mx-auto space-y-8 relative z-10">
+      <div className="max-w-6xl mx-auto space-y-10 relative z-10">
         {/* Header */}
-        <header className="border-b border-cmd-gray pb-6 flex justify-between items-end">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3 text-cmd-green">
-              <Server className="w-8 h-8" />
-              NRPC COMMAND CENTER
-            </h1>
-            <p className="text-xs text-gray-500 mt-2">OFF-SITE SATELLITE UPLINK // LOCALHOST</p>
+        <header className="border-b border-white/5 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 bg-neo-cyan/10 rounded-3xl border border-neo-cyan/30 flex items-center justify-center shadow-[0_0_30px_rgba(102,252,241,0.15)]">
+              <Server className="w-10 h-10 text-neo-cyan animate-pulse-slow" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-heading font-black text-white uppercase tracking-tighter">
+                Command <span className="text-neo-cyan neo-text-glow">Center</span>
+              </h1>
+              <p className="text-xs font-mono text-neo-slate/60 uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-neo-green animate-pulse"></span>
+                Off-Site Satellite Uplink // Localhost
+              </p>
+            </div>
           </div>
-          <div className="text-right">
-            <div className="text-xs text-gray-500 uppercase">System Status</div>
-            <div className="text-cmd-green font-bold animate-pulse">ONLINE</div>
+          <div className="flex items-center gap-3 px-4 py-2 bg-neo-cyan/5 border border-neo-cyan/20 rounded-lg">
+            <Activity className="w-4 h-4 text-neo-cyan" />
+            <span className="text-xs font-mono font-bold text-neo-cyan uppercase tracking-widest">System Online</span>
           </div>
         </header>
 
-        {/* Config & Sync */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 bg-cmd-gray/30 p-6 rounded-xl border border-cmd-gray">
-            <h2 className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2"><Shield className="w-4 h-4" /> UPLINK CONFIGURATION</h2>
-            <div className="space-y-4">
-              <input
-                type="text"
-                value={config.url}
-                onChange={e => setConfig({ ...config, url: e.target.value })}
-                placeholder="Server URL (e.g. https://www.nrpc-platform.app)"
-                className="w-full bg-black border border-cmd-gray p-3 rounded text-sm focus:border-cmd-green outline-none"
-              />
-              <div className="flex gap-4">
-                <input
-                  type="password"
-                  value={config.key}
-                  onChange={e => setConfig({ ...config, key: e.target.value })}
-                  placeholder="BACKUP_SECRET_KEY"
-                  className="flex-1 bg-black border border-cmd-gray p-3 rounded text-sm focus:border-cmd-green outline-none"
-                />
-                <button onClick={saveConfig} className="px-6 bg-cmd-gray hover:bg-white/10 rounded text-xs uppercase font-bold transition-colors">
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-cmd-green/10 p-6 rounded-xl border border-cmd-green/30 flex flex-col justify-center items-center text-center">
-            <HardDrive className="w-12 h-12 text-cmd-green mb-4" />
-            <h2 className="text-xl font-bold text-cmd-green mb-2">SYNC DATA</h2>
-            <p className="text-xs text-gray-400 mb-6">Download Full System Snapshot</p>
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="w-full py-3 bg-cmd-green text-black font-bold rounded hover:bg-green-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {syncing ? <RefreshCw className="animate-spin w-4 h-4" /> : <Download className="w-4 h-4" />}
-              {syncing ? 'DOWNLOADING...' : 'INITIATE SYNC'}
-            </button>
-          </div>
-        </section>
-
-        {msg && (
-          <div className="p-4 bg-blue-900/20 border border-blue-500/50 text-blue-400 text-sm font-bold text-center rounded">
-            {msg}
+        {/* Status Message */}
+        {msg.text && (
+          <div className={`p-4 rounded-xl border flex items-center gap-3 font-mono text-sm uppercase tracking-wider animate-fade-in ${
+            msg.type === 'error' 
+              ? 'bg-neo-amber/10 border-neo-amber/30 text-neo-amber' 
+              : 'bg-neo-cyan/10 border-neo-cyan/30 text-neo-cyan'
+          }`}>
+            {msg.type === 'error' ? <AlertTriangle className="w-5 h-5" /> : <Shield className="w-5 h-5" />}
+            {msg.text}
           </div>
         )}
 
-        {/* Backups List */}
-        <section className="bg-cmd-gray/20 rounded-xl border border-cmd-gray overflow-hidden">
-          <div className="p-4 border-b border-cmd-gray bg-black/40 flex justify-between items-center">
-            <h3 className="font-bold text-sm text-gray-400">LOCAL ARCHIVES</h3>
-            <button onClick={loadBackups} className="text-xs hover:text-white text-gray-500"><RefreshCw className="w-3 h-3" /></button>
-          </div>
-          
-          <table className="w-full text-sm">
-            <thead className="bg-black/40 text-left text-gray-500 text-xs uppercase">
-              <tr>
-                <th className="p-4">Filename</th>
-                <th className="p-4">Size</th>
-                <th className="p-4">Date</th>
-                <th className="p-4 text-right">Emergency Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-cmd-gray/50">
-              {backups.length === 0 ? (
-                <tr><td colSpan={4} className="p-8 text-center text-gray-600">No local archives found.</td></tr>
-              ) : (
-                backups.map(backup => (
-                  <tr key={backup.name} className="hover:bg-white/5 transition-colors group">
-                    <td className="p-4 font-mono text-gray-300">{backup.name}</td>
-                    <td className="p-4 text-cmd-green">{formatSize(backup.size)}</td>
-                    <td className="p-4 text-gray-500">{new Date(backup.date).toLocaleString()}</td>
-                    <td className="p-4 text-right">
+        {/* Main Grid */}
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Configuration Panel */}
+          <section className="lg:col-span-2 space-y-8">
+            <div className="neo-glass rounded-[2rem] border-white/5 p-8 relative overflow-hidden group hover:border-neo-cyan/20 transition-all">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-neo-slate">
+                  <Shield className="w-6 h-6" />
+                </div>
+                <h2 className="text-xl font-heading font-bold text-white uppercase tracking-tight">Uplink Configuration</h2>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest ml-2">Server Endpoint</label>
+                  <input
+                    type="text"
+                    value={config.url}
+                    onChange={e => setConfig({ ...config, url: e.target.value })}
+                    placeholder="https://www.nrpc-platform.app"
+                    className="w-full bg-neo-void/50 border border-white/10 rounded-xl px-6 py-4 text-white font-mono text-sm focus:border-neo-cyan/40 outline-none transition-all"
+                  />
+                </div>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-mono text-neo-slate/40 uppercase tracking-widest ml-2">Secret Key</label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neo-slate/30" />
+                      <input
+                        type="password"
+                        value={config.key}
+                        onChange={e => setConfig({ ...config, key: e.target.value })}
+                        placeholder="BACKUP_SECRET_KEY"
+                        className="w-full bg-neo-void/50 border border-white/10 rounded-xl py-4 pl-12 pr-6 text-white font-mono text-sm focus:border-neo-cyan/40 outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-end">
+                    <button 
+                      onClick={saveConfig} 
+                      className="w-full h-[54px] bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-mono font-bold text-white uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
+                    >
+                      <Save className="w-4 h-4" /> Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Backups List */}
+            <div className="neo-glass rounded-[2rem] border-white/5 overflow-hidden">
+              <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                <h2 className="text-sm font-mono font-bold text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Database className="w-4 h-4 text-neo-cyan" />
+                  Local Archives
+                </h2>
+                <button 
+                  onClick={loadBackups}
+                  className="p-2 bg-white/5 rounded-lg hover:bg-neo-cyan/10 hover:text-neo-cyan transition-all"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="divide-y divide-white/5">
+                {backups.length === 0 ? (
+                  <div className="p-12 text-center text-neo-slate/30 font-mono text-xs uppercase tracking-widest">
+                    No archives found on local drive
+                  </div>
+                ) : (
+                  backups.map((backup) => (
+                    <div key={backup.name} className="p-6 hover:bg-white/[0.02] transition-colors flex items-center justify-between group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-neo-cyan/5 border border-neo-cyan/10 flex items-center justify-center text-neo-cyan font-mono text-xs">
+                          ZIP
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-white font-mono">{backup.name}</div>
+                          <div className="text-[10px] font-mono text-neo-slate/40 uppercase mt-1">
+                            {new Date(backup.date).toLocaleString()} • {formatSize(backup.size)}
+                          </div>
+                        </div>
+                      </div>
                       <button
                         onClick={() => handleRestore(backup.name)}
                         disabled={!!restoring}
-                        className="py-2 px-4 bg-cmd-red/10 border border-cmd-red/30 text-cmd-red hover:bg-cmd-red hover:text-white rounded text-xs font-bold transition-all flex items-center gap-2 ml-auto"
+                        className="opacity-0 group-hover:opacity-100 py-2 px-4 bg-neo-amber/10 border border-neo-amber/30 text-neo-amber hover:bg-neo-amber hover:text-neo-void rounded-lg text-[10px] font-mono font-bold uppercase tracking-widest transition-all flex items-center gap-2"
                       >
                         {restoring === backup.name ? <RefreshCw className="animate-spin w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                        {restoring === backup.name ? 'UPLOADING...' : 'RESTORE TO LIVE'}
+                        {restoring === backup.name ? 'UPLOADING...' : 'RESTORE'}
                       </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </section>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Sync Action */}
+          <section>
+            <div className="neo-glass rounded-[2rem] border-neo-cyan/20 p-8 text-center relative overflow-hidden hover:shadow-[0_0_30px_rgba(102,252,241,0.1)] transition-all duration-500">
+              <div className="scanning-line absolute w-full top-0 left-0 opacity-10"></div>
+              
+              <div className="w-24 h-24 bg-neo-cyan/10 rounded-full border border-neo-cyan/30 flex items-center justify-center mx-auto mb-8 animate-pulse-slow">
+                <HardDrive className="w-10 h-10 text-neo-cyan" />
+              </div>
+              
+              <h2 className="text-2xl font-heading font-black text-white uppercase tracking-tight mb-2">
+                Sync <span className="text-neo-cyan">Protocol</span>
+              </h2>
+              <p className="text-xs font-mono text-neo-slate/60 mb-8 leading-relaxed">
+                Initiate secure transfer of database and file artifacts from live server to local encrypted storage.
+              </p>
+              
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="w-full btn-neo py-5 flex items-center justify-center gap-3 disabled:opacity-50 text-sm"
+              >
+                {syncing ? <RefreshCw className="animate-spin w-5 h-5" /> : <Download className="w-5 h-5" />}
+                {syncing ? 'TRANSFERRING PACKETS...' : 'INITIATE SYNC'}
+              </button>
+            </div>
+          </section>
+        </div>
       </div>
     </main>
   );

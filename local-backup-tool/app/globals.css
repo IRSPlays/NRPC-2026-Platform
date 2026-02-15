@@ -2,23 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #000;
-  color: #fff;
-  font-family: monospace;
+:root {
+  --background: #0B0C10;
+  --foreground: #C5C6C7;
 }
 
-.scanline {
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.neo-glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.neo-text-glow {
+  text-shadow: 0 0 10px rgba(102, 252, 241, 0.5);
+}
+
+.neo-amber-glow {
+  text-shadow: 0 0 10px rgba(255, 179, 0, 0.5);
+}
+
+.btn-neo {
+  @apply bg-neo-cyan/10 text-neo-cyan font-mono font-bold uppercase tracking-widest border border-neo-cyan/50 rounded-xl hover:bg-neo-cyan hover:text-neo-void transition-all duration-300 shadow-[0_0_15px_rgba(102,252,241,0.2)] hover:shadow-[0_0_25px_rgba(102,252,241,0.6)];
+}
+
+.btn-neo-amber {
+  @apply bg-neo-amber/10 text-neo-amber font-mono font-bold uppercase tracking-widest border border-neo-amber/50 rounded-xl hover:bg-neo-amber hover:text-neo-void transition-all duration-300 shadow-[0_0_15px_rgba(255,179,0,0.2)] hover:shadow-[0_0_25px_rgba(255,179,0,0.6)];
+}
+
+.scanning-line {
   background: linear-gradient(
     to bottom,
-    rgba(255,255,255,0),
-    rgba(255,255,255,0) 50%,
-    rgba(0,0,0,0.2) 50%,
-    rgba(0,0,0,0.2)
+    transparent 50%,
+    rgba(102, 252, 241, 0.05) 50%,
+    rgba(102, 252, 241, 0.05) 51%,
+    transparent 51%
   );
-  background-size: 100% 4px;
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  pointer-events: none;
-  z-index: 10;
+  background-size: 100% 8px;
 }
