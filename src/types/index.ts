@@ -5,6 +5,7 @@ export interface Team {
   category: 'Primary' | 'Secondary';
   email?: string;
   login_password?: string;
+  email_sent?: boolean | number;
 }
 
 export interface MissionData {

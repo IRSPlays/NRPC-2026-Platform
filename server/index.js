@@ -421,7 +421,7 @@ app.get('/api/teams', publicLimiter, async (req, res) => {
     const isAdmin = !!adminToken && adminToken.type === 'admin';
     
     const query = isAdmin 
-      ? 'SELECT id, team_name, school_name, category, email, login_password FROM teams ORDER BY team_name'
+      ? 'SELECT id, team_name, school_name, category, email, login_password, email_sent FROM teams ORDER BY team_name'
       : 'SELECT id, team_name, school_name, category FROM teams ORDER BY team_name';
       
     const teams = await db.all(query);
@@ -477,10 +477,81 @@ app.post('/api/admin/send-credentials', requireAdmin, async (req, res) => {
       console.error('Resend Error:', data.error);
       return res.status(500).json({ error: 'Failed to send email via Resend' });
     }
+    
+    // Mark as sent
+    await db.run('UPDATE teams SET email_sent = 1 WHERE id = ?', [teamId]);
 
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Batch send credentials (admin only)
+app.post('/api/admin/batch-send-credentials', requireAdmin, async (req, res) => {
+  const limit = req.body.limit || 50;
+  
+  if (!resend) {
+    return res.status(500).json({ error: 'Email service not configured' });
+  }
+
+  try {
+    const db = await getDb();
+    // Get teams that have email but haven't been sent credentials yet
+    const teams = await db.all(
+      'SELECT * FROM teams WHERE email IS NOT NULL AND email != "" AND (email_sent IS NULL OR email_sent = 0) LIMIT ?', 
+      [limit]
+    );
+    
+    if (teams.length === 0) {
+      return res.json({ success: true, count: 0, message: 'No pending emails found' });
+    }
+    
+    let sentCount = 0;
+    
+    for (const team of teams) {
+      const html = `
+        <div style="font-family: sans-serif; color: #333;">
+          <h1>NRPC 2026 Registration Confirmed</h1>
+          <p>Hello <strong>${team.team_name}</strong> from <strong>${team.school_name}</strong>,</p>
+          <p>Your team has been registered for the 18th National Robotics Programming Competition.</p>
+          
+          <div style="background: #f4f4f4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3>Your Login Credentials</h3>
+            <p><strong>Team Name (Selection):</strong> ${team.team_name}</p>
+            <p><strong>Password:</strong> ${team.login_password}</p>
+          </div>
+
+          <p>Please login at <a href="https://www.nrpc-platform.app/team-login">https://www.nrpc-platform.app/team-login</a></p>
+          <p><em>Note: You will be prompted to change this password upon first login.</em></p>
+          
+          <hr/>
+          <p style="font-size: 12px; color: #888;">This is an automated message from the NRPC 2026 Organizing Committee.</p>
+        </div>
+      `;
+      
+      try {
+        const data = await resend.emails.send({
+          from: `NRPC 2026 <${EMAIL_FROM}>`,
+          to: team.email,
+          subject: 'NRPC 2026: Team Login Credentials',
+          html: html,
+        });
+        
+        if (!data.error) {
+          await db.run('UPDATE teams SET email_sent = 1 WHERE id = ?', [team.id]);
+          sentCount++;
+          // Sleep briefly to avoid rate limits if needed (though Resend handles high throughput well)
+          await new Promise(r => setTimeout(r, 100)); 
+        }
+      } catch (e) {
+        console.error(`Failed to send to ${team.team_name}:`, e);
+      }
+    }
+    
+    res.json({ success: true, count: sentCount });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

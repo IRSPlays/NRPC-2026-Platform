@@ -78,6 +78,11 @@ export const teamsAPI = {
     method: 'POST',
     body: JSON.stringify({ teamId }),
   }),
+
+  batchSendCredentials: (limit: number = 50): Promise<{ success: boolean; count: number }> => fetchWithAuth<{ success: boolean; count: number }>('/api/admin/batch-send-credentials', {
+    method: 'POST',
+    body: JSON.stringify({ limit }),
+  }),
 };
 
 // Scores
