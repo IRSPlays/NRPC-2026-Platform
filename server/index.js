@@ -302,6 +302,9 @@ const requireBackupKey = (req, res, next) => {
 // EXPORT SYSTEM (DB + Uploads)
 app.get('/api/admin/system/export', requireBackupKey, async (req, res) => {
   try {
+    // CRITICAL: Flush WAL to main file before exporting
+    await checkpointDatabase();
+
     const archive = archiver('zip', { zlib: { level: 9 } });
     
     res.attachment(`nrpc-system-backup-${Date.now()}.zip`);
