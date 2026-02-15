@@ -57,6 +57,7 @@ export default function TeamDashboard() {
     return Math.max(...scores.map(s => s.total_score));
   };
 
+  // Filter submissions by type
   const posterSubmissions = submissions.filter(s => s.submission_type !== 'robot_run');
   const robotSubmissions = submissions.filter(s => s.submission_type === 'robot_run');
 
