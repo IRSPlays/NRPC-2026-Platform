@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Database, Download, Upload, CheckCircle2, RefreshCw, History, FileArchive, HardDrive, ShieldAlert, Zap } from 'lucide-react';
+import { Database, Download, Upload, CheckCircle2, RefreshCw, History, FileArchive, HardDrive, ShieldAlert, Zap, Trash2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { backupAPI } from '../../lib/api';
 import { BackupFile } from '../../types';
@@ -24,6 +24,20 @@ export default function BackupManager() {
     }
     loadBackups();
   }, [isAdmin]);
+
+  const deleteBackup = async (filename: string) => {
+    if (!confirm(`DANGER: Permanently delete ${filename} from server storage?`)) {
+      return;
+    }
+
+    try {
+      await backupAPI.delete(filename);
+      setSuccess('Archive purged from server storage');
+      loadBackups();
+    } catch (err: any) {
+      setError('Purge operation failed');
+    }
+  };
 
   const loadBackups = async () => {
     setLoading(true);
@@ -268,6 +282,13 @@ export default function BackupManager() {
                         title="Deploy snapshot"
                       >
                         <RefreshCw className={`w-4 h-4 ${restoring ? 'animate-spin' : ''}`} />
+                      </button>
+                      <button
+                        onClick={() => deleteBackup(backup.name)}
+                        className="p-3 bg-white/5 rounded-xl hover:bg-red-500/10 hover:text-red-500 transition-all"
+                        title="Delete archive"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>

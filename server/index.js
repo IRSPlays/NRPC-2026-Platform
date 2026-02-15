@@ -1414,6 +1414,25 @@ app.get('/api/backup/download/:filename', requireAdmin, (req, res) => {
   res.download(filePath);
 });
 
+// Delete backup
+app.delete('/api/backup/:filename', requireAdmin, (req, res) => {
+  const { filename } = req.params;
+  const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '');
+  const backupDir = path.join(DATA_DIR, 'backups');
+  const filePath = path.join(backupDir, sanitizedFilename);
+
+  if (!filePath.startsWith(backupDir) || !fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Backup not found' });
+  }
+
+  try {
+    fs.unlinkSync(filePath);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Restore from uploaded ZIP
 app.post('/api/backup/restore-upload', requireAdmin, uploadBackup.single('file'), async (req, res) => {
   if (!req.file) {
@@ -1460,6 +1479,17 @@ app.post('/api/backup/restore', requireAdmin, async (req, res) => {
         return res.status(404).json({ error: 'Backup file not found on server' });
       }
       await restoreFromZip(backupPath);
+      
+      // Delete the backup file after successful restoration per user request
+      try {
+        if (fs.existsSync(backupPath)) {
+          fs.unlinkSync(backupPath);
+          console.log(`[RESTORE] Deleted server-side backup file after restoration: ${filename}`);
+        }
+      } catch (delErr) {
+        console.warn(`[RESTORE] Could not delete file ${filename}:`, delErr.message);
+      }
+
       res.json({ success: true, method: 'zip-restore' });
     } else if (backupData) {
       // Restore from JSON payload (Legacy)

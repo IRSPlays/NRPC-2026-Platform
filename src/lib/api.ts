@@ -220,6 +220,10 @@ export const backupAPI = {
     return response.blob();
   },
 
+  delete: (filename: string): Promise<{ success: boolean }> => fetchWithAuth<{ success: boolean }>(`/api/backup/${encodeURIComponent(filename)}`, {
+    method: 'DELETE',
+  }),
+
   restore: (data: { backupData?: any; filename?: string }): Promise<{ success: boolean }> => fetchWithAuth<{ success: boolean }>('/api/backup/restore', {
     method: 'POST',
     body: JSON.stringify(data),
