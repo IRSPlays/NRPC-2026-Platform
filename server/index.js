@@ -48,6 +48,13 @@ if (fs.existsSync('/app/data')) {
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+
+// Ensure temp directories exist
+const tempRestoreDir = path.join(DATA_DIR, 'temp_restore');
+const tempExtractDir = path.join(DATA_DIR, 'temp_extracted');
+if (!fs.existsSync(tempRestoreDir)) fs.mkdirSync(tempRestoreDir, { recursive: true });
+if (!fs.existsSync(tempExtractDir)) fs.mkdirSync(tempExtractDir, { recursive: true });
+
 console.log(`✓ Active Storage Path: ${DATA_DIR}`);
 
 // Enable trust proxy for Railway/Heroku/Vercel to fix rate-limiting

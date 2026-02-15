@@ -42,75 +42,101 @@ export async function closeDatabase() {
 
 // Restore from ZIP backup
 export async function restoreFromZip(zipPath) {
-  console.log(`Starting system restore from: ${zipPath}`);
+  console.log(`[RESTORE] Starting system restore from: ${zipPath}`);
   
-  const tempExtractDir = path.join(DATA_DIR, 'temp_extracted');
-  
-  // Clean temp dir
-  if (fs.existsSync(tempExtractDir)) {
-    fs.rmSync(tempExtractDir, { recursive: true, force: true });
+  if (!fs.existsSync(zipPath)) {
+    console.error(`[RESTORE] ERROR: Source ZIP file not found at ${zipPath}`);
+    throw new Error(`Restore source file missing: ${zipPath}`);
   }
-  fs.mkdirSync(tempExtractDir, { recursive: true });
+
+  const tempExtractDir = path.join(DATA_DIR, 'temp_extracted');
+  console.log(`[RESTORE] Extraction target: ${tempExtractDir}`);
+  
+  // Clean and prepare temp dir
+  try {
+    if (fs.existsSync(tempExtractDir)) {
+      fs.rmSync(tempExtractDir, { recursive: true, force: true });
+    }
+    fs.mkdirSync(tempExtractDir, { recursive: true });
+  } catch (err) {
+    console.error(`[RESTORE] ERROR preparing temp dir: ${err.message}`);
+    throw err;
+  }
 
   try {
-    // 1. Extract ZIP
-    const directory = await unzipper.Open.file(zipPath);
-    await directory.extract({ path: tempExtractDir });
-    console.log('✓ Backup extracted to temp');
+    // 1. Extract ZIP using a more robust method
+    console.log('[RESTORE] Extracting archive...');
+    await new Promise((resolve, reject) => {
+      fs.createReadStream(zipPath)
+        .pipe(unzipper.Extract({ path: tempExtractDir }))
+        .on('close', resolve)
+        .on('error', reject);
+    });
+    console.log('[RESTORE] Extraction complete');
 
     // 2. Validate contents
     const newDbPath = path.join(tempExtractDir, 'database.sqlite');
     if (!fs.existsSync(newDbPath)) {
+      console.error('[RESTORE] ERROR: database.sqlite not found in extracted archive');
       throw new Error('Invalid backup: database.sqlite not found in archive');
     }
 
     // 3. Close active DB connection
+    console.log('[RESTORE] Closing active database connection...');
     await closeDatabase();
 
     // 4. Replace Database File
-    // Backup current DB just in case (optional, but good safety)
+    console.log('[RESTORE] Overwriting database file...');
+    // Backup current DB as a failsafe
     const currentDbBackup = path.join(DATA_DIR, `database.sqlite.pre-restore-${Date.now()}`);
     if (fs.existsSync(DB_PATH)) {
       fs.copyFileSync(DB_PATH, currentDbBackup);
     }
 
-    // Copy new DB
     fs.copyFileSync(newDbPath, DB_PATH);
-    console.log('✓ Database file replaced');
+    console.log('[RESTORE] Database file replaced successfully');
 
     // 5. Replace Uploads
     const uploadsPath = path.join(DATA_DIR, 'uploads');
     const newUploadsPath = path.join(tempExtractDir, 'uploads');
 
     if (fs.existsSync(newUploadsPath)) {
-      // Remove current uploads
+      console.log('[RESTORE] Replacing uploads directory...');
       if (fs.existsSync(uploadsPath)) {
         fs.rmSync(uploadsPath, { recursive: true, force: true });
       }
-      // Move new uploads
-      fs.renameSync(newUploadsPath, uploadsPath);
-      console.log('✓ Uploads directory replaced');
+      // Use move/rename for efficiency if possible, or copy
+      try {
+        fs.renameSync(newUploadsPath, uploadsPath);
+      } catch (e) {
+        // Fallback to copy if rename fails (e.g. across mount points)
+        fs.cpSync(newUploadsPath, uploadsPath, { recursive: true });
+      }
+      console.log('[RESTORE] Uploads directory replaced successfully');
     } else {
-      console.log('⚠ No uploads directory in backup, preserving existing uploads or creating empty.');
+      console.log('[RESTORE] WARNING: No uploads directory in backup');
       if (!fs.existsSync(uploadsPath)) {
         fs.mkdirSync(uploadsPath, { recursive: true });
       }
     }
 
     // 6. Re-initialize Database
+    console.log('[RESTORE] Re-initializing database connection...');
     await initDatabase();
-    console.log('✓ System restore completed successfully');
+    console.log('[RESTORE] SUCCESS: System restore completed');
 
   } catch (err) {
-    console.error('Restore failed:', err);
-    // Try to recover connection if it was closed
+    console.error(`[RESTORE] RESTORE FAILED: ${err.message}`);
+    // Try to recover connection
     if (!db) await initDatabase(); 
     throw err;
   } finally {
-    // Cleanup temp
-    if (fs.existsSync(tempExtractDir)) {
-      fs.rmSync(tempExtractDir, { recursive: true, force: true });
-    }
+    // Cleanup temp (keep it for debugging if needed, but usually best to clean)
+    try {
+      if (fs.existsSync(tempExtractDir)) {
+        fs.rmSync(tempExtractDir, { recursive: true, force: true });
+      }
+    } catch (e) {}
   }
 }
 
