@@ -447,6 +447,13 @@ app.post('/api/admin/send-credentials', requireAdmin, async (req, res) => {
     if (!team) return res.status(404).json({ error: 'Team not found' });
     if (!team.email) return res.status(400).json({ error: 'Team has no email address' });
 
+    // If using default password, generate a secure one before sending
+    let passwordToSend = team.login_password;
+    if (!passwordToSend || passwordToSend === 'NRPC2026Teams') {
+      passwordToSend = generateRandomPassword(10);
+      await db.run('UPDATE teams SET login_password = ? WHERE id = ?', [passwordToSend, team.id]);
+    }
+
     const html = `
       <div style="font-family: sans-serif; color: #333;">
         <h1>NRPC 2026 Registration Confirmed</h1>
@@ -456,7 +463,7 @@ app.post('/api/admin/send-credentials', requireAdmin, async (req, res) => {
         <div style="background: #f4f4f4; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3>Your Login Credentials</h3>
           <p><strong>Team Name (Selection):</strong> ${team.team_name}</p>
-          <p><strong>Password:</strong> ${team.login_password}</p>
+          <p><strong>Password:</strong> ${passwordToSend}</p>
         </div>
 
         <p>Please login at <a href="https://www.nrpc-platform.app/team-login">https://www.nrpc-platform.app/team-login</a></p>
@@ -512,6 +519,13 @@ app.post('/api/admin/batch-send-credentials', requireAdmin, async (req, res) => 
     let sentCount = 0;
     
     for (const team of teams) {
+      // If using default password, generate a secure one before sending
+      let passwordToSend = team.login_password;
+      if (!passwordToSend || passwordToSend === 'NRPC2026Teams') {
+        passwordToSend = generateRandomPassword(10);
+        await db.run('UPDATE teams SET login_password = ? WHERE id = ?', [passwordToSend, team.id]);
+      }
+
       const html = `
         <div style="font-family: sans-serif; color: #333;">
           <h1>NRPC 2026 Registration Confirmed</h1>
@@ -521,7 +535,7 @@ app.post('/api/admin/batch-send-credentials', requireAdmin, async (req, res) => 
           <div style="background: #f4f4f4; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3>Your Login Credentials</h3>
             <p><strong>Team Name (Selection):</strong> ${team.team_name}</p>
-            <p><strong>Password:</strong> ${team.login_password}</p>
+            <p><strong>Password:</strong> ${passwordToSend}</p>
           </div>
 
           <p>Please login at <a href="https://www.nrpc-platform.app/team-login">https://www.nrpc-platform.app/team-login</a></p>
@@ -557,6 +571,16 @@ app.post('/api/admin/batch-send-credentials', requireAdmin, async (req, res) => 
   }
 });
 
+// Helper to generate random password
+function generateRandomPassword(length = 8) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 // Create team (admin only)
 app.post('/api/teams', requireAdmin, async (req, res) => {
   const { team_name, school_name, category, email } = req.body;
@@ -573,11 +597,14 @@ app.post('/api/teams', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Invalid category' });
   }
   
+  // Generate random password
+  const login_password = generateRandomPassword(10);
+  
   try {
     const db = await getDb();
     const result = await db.run(
-      'INSERT INTO teams (team_name, school_name, category, email) VALUES (?, ?, ?, ?)',
-      [team_name, school_name, category, email || null]
+      'INSERT INTO teams (team_name, school_name, category, email, login_password) VALUES (?, ?, ?, ?, ?)',
+      [team_name, school_name, category, email || null, login_password]
     );
     
     res.json({ 
@@ -587,7 +614,8 @@ app.post('/api/teams', requireAdmin, async (req, res) => {
         team_name, 
         school_name, 
         category,
-        email
+        email,
+        login_password
       } 
     });
   } catch (err) {
