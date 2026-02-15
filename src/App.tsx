@@ -42,6 +42,7 @@ function App() {
       <AuthProvider>
         <div className="min-h-screen text-neo-slate transition-colors duration-200">
           <Header />
+          <PasswordChangeModal />
           <Routes>
             <Route path="/" element={<main className="container mx-auto px-4"><Home /></main>} />
             <Route path="/calculator" element={<main className="container mx-auto px-4 py-8"><Calculator /></main>} />

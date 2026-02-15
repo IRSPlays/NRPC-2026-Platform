@@ -41,7 +41,13 @@ export default function TeamLogin() {
 
     setLoading(true);
     try {
-      await loginAsTeam(teamId, password);
+      const res = await loginAsTeam(teamId, password);
+      // @ts-ignore
+      if (res?.requiresPasswordChange) {
+        localStorage.setItem('nrpc_requires_password_change', 'true');
+      } else {
+        localStorage.removeItem('nrpc_requires_password_change');
+      }
       navigate('/team-dashboard');
     } catch (err) {
       setError('Access Denied: Invalid Credentials');

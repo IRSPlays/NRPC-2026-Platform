@@ -312,10 +312,6 @@ app.post('/api/auth/team', authLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Invalid team id' });
   }
   
-  if (password !== TEAM_PASSWORD) {
-    return res.status(401).json({ error: 'Invalid password' });
-  }
-  
   const db = await getDb();
   const team = await db.get('SELECT * FROM teams WHERE id = ?', [teamId]);
   if (!team) {
@@ -325,13 +321,42 @@ app.post('/api/auth/team', authLimiter, async (req, res) => {
   const token = generateToken({ type: 'team', teamId: team.id, teamName: team.team_name, timestamp: Date.now() });
   res.cookie('team_auth', token, COOKIE_OPTIONS);
   
+  // Check if using default or custom password (stored in DB)
+  // If team has a specific login_password set, compare against that.
+  // If using global TEAM_PASSWORD, flag it.
+  
+  // Actually, the current logic is:
+  // 1. Check global TEAM_PASSWORD (env var)
+  // 2. But we recently added login_password column to DB.
+  
+  // Let's refine the logic:
+  // If team.login_password exists, verify against THAT.
+  // If not, verify against global TEAM_PASSWORD.
+  
+  // Wait, my previous code only checked global TEAM_PASSWORD.
+  // I need to update it to check the DB password first.
+  
+  let isValid = false;
+  if (team.login_password) {
+    isValid = password === team.login_password;
+  } else {
+    isValid = password === TEAM_PASSWORD;
+  }
+  
+  if (!isValid) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
+  
+  const requiresPasswordChange = password === TEAM_PASSWORD || password === 'NRPC2026Teams';
+
   res.json({ 
     success: true, 
     team: { 
       id: team.id, 
       name: team.team_name, 
       school: team.school_name 
-    } 
+    },
+    requiresPasswordChange
   });
 });
 
