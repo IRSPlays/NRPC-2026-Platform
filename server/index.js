@@ -1327,11 +1327,45 @@ app.delete('/api/scores/:id', requireAdmin, async (req, res) => {
 
 // ===== BACKUP ROUTES (Admin only) =====
 
-// Create backup
+// Create backup (Full System Zip)
 app.post('/api/backup', requireAdmin, async (req, res) => {
   try {
-    const backupPath = await backupDatabase();
-    res.json({ success: true, path: backupPath });
+    const timestamp = Date.now();
+    const backupName = `backup-${timestamp}.zip`;
+    const backupPath = path.join(DATA_DIR, 'backups', backupName);
+    
+    // Ensure backups dir exists
+    const backupDir = path.join(DATA_DIR, 'backups');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    const output = fs.createWriteStream(backupPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    output.on('close', () => {
+      res.json({ success: true, path: backupPath, name: backupName });
+    });
+
+    archive.on('error', (err) => {
+      throw err;
+    });
+
+    archive.pipe(output);
+
+    // Append Database
+    const dbPath = path.join(DATA_DIR, 'database.sqlite');
+    if (fs.existsSync(dbPath)) {
+      archive.file(dbPath, { name: 'database.sqlite' });
+    }
+
+    // Append Uploads
+    const uploadsDir = path.join(DATA_DIR, 'uploads');
+    if (fs.existsSync(uploadsDir)) {
+      archive.directory(uploadsDir, 'uploads');
+    }
+
+    await archive.finalize();
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
