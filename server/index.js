@@ -354,7 +354,8 @@ app.post('/api/auth/team', authLimiter, async (req, res) => {
     return res.status(401).json({ error: 'Invalid password' });
   }
   
-  const requiresPasswordChange = password === TEAM_PASSWORD || password === 'NRPC2026Teams';
+  // Require change if password_changed is 0/null OR if using explicit default
+  const requiresPasswordChange = (team.password_changed !== 1) || password === TEAM_PASSWORD || password === 'NRPC2026Teams';
 
   res.json({ 
     success: true, 
@@ -404,7 +405,7 @@ app.post('/api/auth/update-password', async (req, res) => {
 
   try {
     const db = await getDb();
-    await db.run('UPDATE teams SET login_password = ? WHERE id = ?', [newPassword, teamToken.teamId]);
+    await db.run('UPDATE teams SET login_password = ?, password_changed = 1 WHERE id = ?', [newPassword, teamToken.teamId]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -451,7 +452,7 @@ app.post('/api/admin/send-credentials', requireAdmin, async (req, res) => {
     let passwordToSend = team.login_password;
     if (!passwordToSend || passwordToSend === 'NRPC2026Teams') {
       passwordToSend = generateRandomPassword(10);
-      await db.run('UPDATE teams SET login_password = ? WHERE id = ?', [passwordToSend, team.id]);
+      await db.run('UPDATE teams SET login_password = ?, password_changed = 0 WHERE id = ?', [passwordToSend, team.id]);
     }
 
     const html = `
@@ -523,7 +524,7 @@ app.post('/api/admin/batch-send-credentials', requireAdmin, async (req, res) => 
       let passwordToSend = team.login_password;
       if (!passwordToSend || passwordToSend === 'NRPC2026Teams') {
         passwordToSend = generateRandomPassword(10);
-        await db.run('UPDATE teams SET login_password = ? WHERE id = ?', [passwordToSend, team.id]);
+        await db.run('UPDATE teams SET login_password = ?, password_changed = 0 WHERE id = ?', [passwordToSend, team.id]);
       }
 
       const html = `
@@ -603,7 +604,7 @@ app.post('/api/teams', requireAdmin, async (req, res) => {
   try {
     const db = await getDb();
     const result = await db.run(
-      'INSERT INTO teams (team_name, school_name, category, email, login_password) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO teams (team_name, school_name, category, email, login_password, password_changed) VALUES (?, ?, ?, ?, ?, 0)',
       [team_name, school_name, category, email || null, login_password]
     );
     

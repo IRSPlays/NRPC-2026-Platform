@@ -52,6 +52,7 @@ async function initDatabase() {
       category TEXT CHECK(category IN ('Primary', 'Secondary')) NOT NULL,
       login_password TEXT DEFAULT 'NRPC2026Teams',
       email_sent INTEGER DEFAULT 0,
+      password_changed INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -69,6 +70,12 @@ async function initDatabase() {
     if (!hasEmailSent) {
       console.log('Migrating: Adding email_sent to teams table...');
       await db.run("ALTER TABLE teams ADD COLUMN email_sent INTEGER DEFAULT 0");
+    }
+
+    const hasPasswordChanged = tableInfo.some(col => col.name === 'password_changed');
+    if (!hasPasswordChanged) {
+      console.log('Migrating: Adding password_changed to teams table...');
+      await db.run("ALTER TABLE teams ADD COLUMN password_changed INTEGER DEFAULT 0");
     }
   } catch (err) {
     console.error('Migration error:', err);
@@ -259,8 +266,8 @@ export async function restoreDatabase(backupData) {
 
     for (const team of backupData.teams) {
       await database.run(
-        'INSERT INTO teams (id, team_name, school_name, email, category, login_password, email_sent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [team.id, team.team_name, team.school_name, team.email || null, team.category, team.login_password, team.email_sent || 0, team.created_at]
+        'INSERT INTO teams (id, team_name, school_name, email, category, login_password, email_sent, password_changed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [team.id, team.team_name, team.school_name, team.email || null, team.category, team.login_password, team.email_sent || 0, team.password_changed || 0, team.created_at]
       );
     }
 
