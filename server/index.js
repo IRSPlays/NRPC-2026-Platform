@@ -1828,7 +1828,8 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // API endpoints serve sitemap.xml with actual domain
 app.get('/sitemap.xml', (req, res) => {
-  const baseUrl = process.env.BASE_URL || 'https://www.nrpc-platform.app';
+  // Force WWW for SEO consistency
+  const baseUrl = 'https://www.nrpc-platform.app';
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -1857,7 +1858,7 @@ app.get('/sitemap.xml', (req, res) => {
 
 // Dynamic robots.txt
 app.get('/robots.txt', (req, res) => {
-  const baseUrl = process.env.BASE_URL || 'https://www.nrpc-platform.app';
+  const baseUrl = 'https://www.nrpc-platform.app';
   const robots = `# Robots.txt for NRPC Competition Platform
 User-agent: *
 Allow: /
