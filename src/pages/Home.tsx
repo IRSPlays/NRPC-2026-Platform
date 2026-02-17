@@ -351,11 +351,15 @@ export default function Home() {
           </Link>
         </div>
         <div className="flex justify-center gap-8 opacity-40">
-           <img src="/ADSS Logo.png" alt="ADSS" className="h-10 w-auto" />
-           <img src="/NYP Lgo.svg" alt="NYP" className="h-10 w-auto" />
+           <a href="https://www.nrpc-platform.app/" title="NRPC 2026 Home">
+             <img src="/ADSS Logo.png" alt="ADSS" className="h-10 w-auto hover:opacity-100 transition-opacity" />
+           </a>
+           <a href="https://www.nrpc-platform.app/" title="NRPC 2026 Home">
+             <img src="/NYP Lgo.svg" alt="NYP" className="h-10 w-auto hover:opacity-100 transition-opacity" />
+           </a>
         </div>
         <p className="text-[8px] md:text-[10px] font-mono text-neo-slate/30 uppercase tracking-[0.4em] px-4">
-          Powered by NRPC Intelligence // © 2026 De-Extinction Taskforce
+          <a href="https://www.nrpc-platform.app/" className="hover:text-neo-cyan transition-colors">Powered by NRPC Intelligence</a> // © 2026 De-Extinction Taskforce
         </p>
       </footer>
     </div>
